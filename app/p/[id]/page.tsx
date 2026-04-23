@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
+import AcceptButton from '@/components/AcceptButton'
 
 type Service = {
   name: string
@@ -26,6 +27,14 @@ export default async function ProposalPublicPage({
 
   if (error || !proposal) notFound()
 
+  if (proposal.status !== 'signed') {
+    await fetch('http://localhost:3000/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(() => {})
+  }
+
   const introBlock = proposal.blocks?.find((b: Block) => b.type === 'intro')
   const servicesBlock = proposal.blocks?.find((b: Block) => b.type === 'services')
   const services: Service[] = servicesBlock?.content || []
@@ -33,8 +42,6 @@ export default async function ProposalPublicPage({
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8f7f4', fontFamily: "'Georgia', serif" }}>
-
-      {/* Hero */}
       <div style={{ background: '#0f0f0f', padding: '64px 24px 48px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>
@@ -53,8 +60,6 @@ export default async function ProposalPublicPage({
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '40px 24px' }}>
-
-        {/* Intro */}
         {introBlock?.content && (
           <div style={{ marginBottom: '24px' }}>
             <p style={{ fontSize: '11px', color: '#999', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '16px' }}>
@@ -66,10 +71,8 @@ export default async function ProposalPublicPage({
           </div>
         )}
 
-        {/* Divisor */}
         <div style={{ height: '1px', background: '#e8e5e0', margin: '32px 0' }} />
 
-        {/* Servicios */}
         {services.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <p style={{ fontSize: '11px', color: '#999', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '20px' }}>
@@ -77,13 +80,7 @@ export default async function ProposalPublicPage({
             </p>
             <div>
               {services.map((service, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '14px 0',
-                  borderBottom: '1px solid #eee'
-                }}>
+                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #eee' }}>
                   <span style={{ fontSize: '15px', color: '#222', fontFamily: 'sans-serif' }}>{service.name}</span>
                   <span style={{ fontSize: '15px', color: '#222', fontWeight: '500', fontFamily: 'sans-serif' }}>
                     {Number(service.price).toLocaleString('es-ES')}€
@@ -91,17 +88,7 @@ export default async function ProposalPublicPage({
                 </div>
               ))}
             </div>
-
-            {/* Total */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px 24px',
-              background: '#0f0f0f',
-              borderRadius: '12px',
-              marginTop: '20px'
-            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#0f0f0f', borderRadius: '12px', marginTop: '20px' }}>
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>Total sin IVA</span>
               <span style={{ color: '#ffffff', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px' }}>
                 {total.toLocaleString('es-ES')}€
@@ -110,32 +97,9 @@ export default async function ProposalPublicPage({
           </div>
         )}
 
-        {/* Divisor */}
         <div style={{ height: '1px', background: '#e8e5e0', margin: '32px 0' }} />
 
-        {/* CTA */}
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#999', marginBottom: '20px', fontFamily: 'sans-serif' }}>
-            ¿Todo correcto? Acepta con un clic, sin descargar nada.
-          </p>
-          <button style={{
-            width: '100%',
-            background: '#0f0f0f',
-            color: '#ffffff',
-            border: 'none',
-            padding: '16px',
-            borderRadius: '10px',
-            fontSize: '15px',
-            fontFamily: 'sans-serif',
-            cursor: 'pointer',
-            letterSpacing: '0.2px'
-          }}>
-            Aceptar esta propuesta →
-          </button>
-          <p style={{ fontSize: '12px', color: '#bbb', marginTop: '12px', fontFamily: 'sans-serif' }}>
-            Recibiréis una copia por email al aceptar
-          </p>
-        </div>
+        <AcceptButton proposalId={id} signed={proposal.status === 'signed'} />
 
       </div>
     </div>
