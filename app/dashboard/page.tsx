@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
 type Proposal = {
   id: string
@@ -10,7 +12,12 @@ type Proposal = {
   status: string
   total_amount: number
   created_at: string
+  sent_at: string | null
+  signed_at: string | null
 }
+
+const fmt = (date: string | null) =>
+  date ? new Date(date).toLocaleString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null
 
 const statusLabel: Record<string, string> = {
   draft: 'Borrador',
@@ -20,144 +27,332 @@ const statusLabel: Record<string, string> = {
 }
 
 const statusColor: Record<string, string> = {
-  draft: '#999',
-  sent: '#3b82f6',
-  opened: '#f59e0b',
-  signed: '#22c55e',
+  draft: '#94A3B8',
+  sent: '#4361EE',
+  opened: '#F59E0B',
+  signed: '#22C55E',
 }
 
-export default function DashboardPage() {
-  const [proposals, setProposals] = useState<Proposal[]>([])
-  const [loading, setLoading] = useState(true)
+function CopyLinkButton({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    const fetchProposals = async () => {
-      const { data, error } = await supabase
-        .from('proposals')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (!error && data) setProposals(data)
-      setLoading(false)
-    }
-    fetchProposals()
-  }, [])
-
-  const stats = [
-    { label: 'Total', value: proposals.length },
-    { label: 'Enviadas', value: proposals.filter(p => p.status === 'sent').length },
-    { label: 'Abiertas', value: proposals.filter(p => p.status === 'opened').length },
-    { label: 'Firmadas', value: proposals.filter(p => p.status === 'signed').length },
-  ]
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const url = `${window.location.origin}/p/${id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f7f4', fontFamily: 'sans-serif' }}>
+    <button
+      onClick={handleCopy}
+      title="Copiar link público"
+      style={{
+        background: 'none',
+        border: '1px solid #E2E8F0',
+        borderRadius: '6px',
+        padding: '4px 10px',
+        fontSize: '11px',
+        color: copied ? '#22C55E' : '#64748B',
+        cursor: 'pointer',
+        flexShrink: 0,
+        transition: 'color 0.2s',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {copied ? '✓ Copiado' : 'Copiar link'}
+    </button>
+  )
+}
+
+type FilterKey = 'all' | 'sent' | 'opened' | 'signed' | 'draft'
+
+export default function DashboardPage() {
+  const router = useRouter()
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<FilterKey>('all')
+
+  const fetchProposals = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('proposals')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!error && data) setProposals(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchProposals()
+  }, [fetchProposals])
+
+  const stats: { label: string; key: FilterKey; value: number }[] = [
+    { label: 'Total', key: 'all', value: proposals.length },
+    { label: 'Enviadas', key: 'sent', value: proposals.filter(p => p.status === 'sent').length },
+    { label: 'Abiertas', key: 'opened', value: proposals.filter(p => p.status === 'opened').length },
+    { label: 'Firmadas', key: 'signed', value: proposals.filter(p => p.status === 'signed').length },
+  ]
+
+  const filtered = filter === 'all' ? proposals : proposals.filter(p => p.status === filter)
+
+  const barData = (() => {
+    const months: { mes: string; propuestas: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const mes = d.toLocaleDateString('es-ES', { month: 'short' })
+      const propuestas = proposals.filter(p => p.created_at.startsWith(key)).length
+      months.push({ mes, propuestas })
+    }
+    return months
+  })()
+
+  const donutData = [
+    { name: 'Borrador', value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8' },
+    { name: 'Enviada', value: proposals.filter(p => p.status === 'sent').length, color: '#4361EE' },
+    { name: 'Abierta', value: proposals.filter(p => p.status === 'opened').length, color: '#F59E0B' },
+    { name: 'Firmada', value: proposals.filter(p => p.status === 'signed').length, color: '#22C55E' },
+  ].filter(d => d.value > 0)
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    if (!window.confirm('¿Seguro que quieres eliminar esta propuesta? Esta acción no se puede deshacer.')) return
+    await supabase.from('proposals').delete().eq('id', id)
+    setProposals(prev => prev.filter(p => p.id !== id))
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#EEF2FF', fontFamily: 'sans-serif' }}>
 
       {/* Topbar */}
-      <div style={{ background: '#0f0f0f', padding: '0 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '56px' }}>
+      <div style={{ background: '#1C2B5E', padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a8e063' }} />
-          <span style={{ color: '#ffffff', fontSize: '15px', letterSpacing: '-0.3px' }}>Proposly</span>
+          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#6EE7B7' }} />
+          <span style={{ color: '#ffffff', fontSize: '15px', letterSpacing: '-0.3px', fontWeight: '500' }}>Proposly</span>
         </div>
-        <button
-          onClick={() => window.location.href = '/editor'}
-          style={{ background: '#ffffff', color: '#0f0f0f', border: 'none', padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-        >
-          + Nueva propuesta
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <a
+            href="/settings"
+            style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)' }}
+          >
+            Ajustes
+          </a>
+          <button
+            onClick={handleSignOut}
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </div>
 
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px' }}>
 
-        {/* Título */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '400', color: '#0f0f0f', margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
-            Tus propuestas
-          </h1>
-          <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>
-            Gestiona y haz seguimiento de todas tus propuestas
-          </p>
+        {/* Título + botón nueva */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
+              Tus propuestas
+            </h1>
+            <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+              Gestiona y haz seguimiento de todas tus propuestas
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/editor')}
+            style={{
+              background: '#4361EE',
+              color: '#fff',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            + Nueva propuesta
+          </button>
         </div>
 
-        {/* Stats */}
+        {/* Stats clicables */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '40px' }}>
           {stats.map(stat => (
-            <div key={stat.label} style={{ background: '#ffffff', border: '1px solid #eee', borderRadius: '12px', padding: '20px' }}>
-              <p style={{ fontSize: '11px', color: '#999', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            <div
+              key={stat.key}
+              onClick={() => setFilter(stat.key)}
+              style={{
+                background: '#ffffff',
+                border: filter === stat.key ? '2px solid #4361EE' : '1px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: filter === stat.key ? '19px' : '20px',
+                cursor: 'pointer',
+                transition: 'border 0.15s',
+              }}
+            >
+              <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>
                 {stat.label}
               </p>
-              <p style={{ fontSize: '28px', fontWeight: '400', color: '#0f0f0f', margin: 0, fontFamily: 'Georgia, serif' }}>
+              <p style={{ fontSize: '28px', fontWeight: '400', color: '#0F172A', margin: 0, fontFamily: 'Georgia, serif' }}>
                 {stat.value}
               </p>
             </div>
           ))}
         </div>
 
+        {/* Gráficos */}
+        {proposals.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '40px' }}>
+
+            <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '24px' }}>
+              <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 20px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                Propuestas por mes
+              </p>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={barData} barSize={20}>
+                  <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} width={24} />
+                  <Tooltip
+                    contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}
+                    cursor={{ fill: '#EEF2FF' }}
+                  />
+                  <Bar dataKey="propuestas" fill="#4361EE" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '24px' }}>
+              <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 20px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                Tasa de conversión
+              </p>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={donutData} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value">
+                    {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+          </div>
+        )}
+
         {/* Lista */}
-        <div style={{ background: '#ffffff', border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
-            <p style={{ fontSize: '11px', color: '#999', margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>
-              Propuestas recientes
+        <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: '11px', color: '#64748B', margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>
+              {filter === 'all' ? 'Todas las propuestas' : `Propuestas ${statusLabel[filter]?.toLowerCase()}s`}
             </p>
+            {filter !== 'all' && (
+              <button
+                onClick={() => setFilter('all')}
+                style={{ background: 'none', border: 'none', fontSize: '11px', color: '#4361EE', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Ver todas
+              </button>
+            )}
           </div>
 
           {loading ? (
-            <div style={{ padding: '48px', textAlign: 'center', color: '#999', fontSize: '14px' }}>
+            <div style={{ padding: '48px', textAlign: 'center', color: '#64748B', fontSize: '14px' }}>
               Cargando...
             </div>
-          ) : proposals.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-              <p style={{ color: '#999', fontSize: '14px', marginBottom: '20px' }}>
-                Todavía no tienes propuestas
+              <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '20px' }}>
+                {filter === 'all' ? 'Todavía no tienes propuestas' : `No hay propuestas ${statusLabel[filter]?.toLowerCase()}s`}
               </p>
-              <button
-                onClick={() => window.location.href = '/editor'}
-                style={{ background: '#0f0f0f', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}
-              >
-                Crear primera propuesta
-              </button>
+              {filter === 'all' && (
+                <button
+                  onClick={() => router.push('/editor')}
+                  style={{ background: '#4361EE', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  Crear primera propuesta
+                </button>
+              )}
             </div>
           ) : (
-            proposals.map((proposal, index) => (
+            filtered.map((proposal, index) => (
               <div
                 key={proposal.id}
                 style={{
                   padding: '16px 24px',
-                  borderBottom: index < proposals.length - 1 ? '1px solid #f5f5f5' : 'none',
+                  borderBottom: index < filtered.length - 1 ? '1px solid #F1F5F9' : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '16px',
                   cursor: 'pointer',
                   transition: 'background 0.1s',
                 }}
-                onClick={() => window.location.href = `/p/${proposal.id}`}
-                onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+                onClick={() => router.push(proposal.status === 'signed' ? `/p/${proposal.id}` : `/editor/${proposal.id}`)}
+                onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFF')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                {/* Icono */}
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <span style={{ fontSize: '14px' }}>📄</span>
                 </div>
 
-                {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '14px', fontWeight: '500', color: '#0f0f0f', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {proposal.title}
                   </p>
-                  <p style={{ fontSize: '12px', color: '#999', margin: 0 }}>
+                  <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 4px' }}>
                     {proposal.client_name}
                   </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                      Creada {fmt(proposal.created_at)}
+                    </span>
+                    {fmt(proposal.signed_at) && (
+                      <span style={{ fontSize: '11px', color: '#22C55E' }}>
+                        Firmada {fmt(proposal.signed_at)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Status */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor[proposal.status] }} />
-                  <span style={{ fontSize: '12px', color: '#666' }}>{statusLabel[proposal.status]}</span>
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>{statusLabel[proposal.status]}</span>
                 </div>
 
-                {/* Importe */}
-                <span style={{ fontSize: '14px', fontWeight: '500', color: '#0f0f0f', minWidth: '70px', textAlign: 'right' }}>
+                <span style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', minWidth: '70px', textAlign: 'right' }}>
                   {Number(proposal.total_amount).toLocaleString('es-ES')}€
                 </span>
+
+                <CopyLinkButton id={proposal.id} />
+
+                {proposal.status !== 'signed' && (
+                  <button
+                    onClick={e => handleDelete(e, proposal.id)}
+                    title="Eliminar propuesta"
+                    style={{
+                      background: 'none',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '11px',
+                      color: '#EF4444',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                )}
               </div>
             ))
           )}
