@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import AcceptButton from '@/components/AcceptButton'
+import { trackProposal } from '@/lib/trackProposal'
 
 type Service = {
   name: string
@@ -34,11 +35,7 @@ export default async function ProposalPublicPage({
     .single()
 
   if (proposal.status !== 'signed') {
-    await fetch('http://localhost:3000/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    }).catch(() => {})
+    await trackProposal(id).catch(() => {})
   }
 
   const introBlock = proposal.blocks?.find((b: Block) => b.type === 'intro')
