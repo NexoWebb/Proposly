@@ -96,7 +96,7 @@ export default function DashboardPage() {
     fetchProposals()
   }, [fetchProposals])
 
-  const sent = proposals.filter(p => p.status !== 'draft').length
+  const sent = proposals.filter(p => p.status === 'sent').length
   const opened = proposals.filter(p => p.status === 'opened').length
   const signed = proposals.filter(p => p.status === 'signed').length
 
@@ -109,9 +109,7 @@ export default function DashboardPage() {
 
   const filtered = filter === 'all'
     ? proposals
-    : filter === 'sent'
-      ? proposals.filter(p => p.status !== 'draft')
-      : proposals.filter(p => p.status === filter)
+    : proposals.filter(p => p.status === filter)
 
   const barData = (() => {
     const months: { mes: string; propuestas: number }[] = []
@@ -172,14 +170,12 @@ export default function DashboardPage() {
           <span style={{ color: '#ffffff', fontSize: '15px', letterSpacing: '-0.3px', fontWeight: '500' }}>Proposly</span>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {!isMobile && (
-            <a
-              href="/settings"
-              style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)' }}
-            >
-              Ajustes
-            </a>
-          )}
+          <a
+            href="/settings"
+            style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)' }}
+          >
+            Ajustes
+          </a>
           <button
             onClick={handleSignOut}
             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}
