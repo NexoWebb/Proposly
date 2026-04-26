@@ -96,20 +96,22 @@ export default function DashboardPage() {
     fetchProposals()
   }, [fetchProposals])
 
-  const sent = proposals.filter(p => p.status === 'sent').length
+  const sent = proposals.filter(p => p.status !== 'opened' && p.status !== 'signed').length
   const opened = proposals.filter(p => p.status === 'opened').length
   const signed = proposals.filter(p => p.status === 'signed').length
 
   const stats: { label: string; key: FilterKey; value: number; sub?: string }[] = [
     { label: 'Total', key: 'all', value: proposals.length },
-    { label: 'Enviadas', key: 'sent', value: sent, sub: 'Enviadas al cliente' },
+    { label: 'Enviadas', key: 'sent', value: sent, sub: 'Sin abrir ni firmar' },
     { label: 'Abiertas', key: 'opened', value: opened, sub: 'Pendientes de firma' },
     { label: 'Firmadas', key: 'signed', value: signed },
   ]
 
   const filtered = filter === 'all'
     ? proposals
-    : proposals.filter(p => p.status === filter)
+    : filter === 'sent'
+      ? proposals.filter(p => p.status !== 'opened' && p.status !== 'signed')
+      : proposals.filter(p => p.status === filter)
 
   const barData = (() => {
     const months: { mes: string; propuestas: number }[] = []
