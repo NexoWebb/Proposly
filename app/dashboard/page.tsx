@@ -77,13 +77,16 @@ export default function DashboardPage() {
 
   const fetchProposals = useCallback(async () => {
     setLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
     const { data, error } = await supabase
       .from('proposals')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     if (!error && data) setProposals(data)
     setLoading(false)
-  }, [])
+  }, [router])
 
   useEffect(() => {
     fetchProposals()
