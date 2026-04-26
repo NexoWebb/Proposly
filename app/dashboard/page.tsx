@@ -94,18 +94,22 @@ export default function DashboardPage() {
     fetchProposals()
   }, [fetchProposals])
 
-  const sent = proposals.filter(p => p.status === 'sent').length
+  const sent = proposals.filter(p => p.sent_at !== null).length
   const opened = proposals.filter(p => p.status === 'opened').length
   const signed = proposals.filter(p => p.status === 'signed').length
 
   const stats: { label: string; key: FilterKey; value: number; sub?: string }[] = [
     { label: 'Total', key: 'all', value: proposals.length },
-    { label: 'Enviadas', key: 'sent', value: sent, sub: 'Esperando apertura' },
+    { label: 'Enviadas', key: 'sent', value: sent, sub: 'Enviadas al cliente' },
     { label: 'Abiertas', key: 'opened', value: opened, sub: 'Pendientes de firma' },
     { label: 'Firmadas', key: 'signed', value: signed },
   ]
 
-  const filtered = filter === 'all' ? proposals : proposals.filter(p => p.status === filter)
+  const filtered = filter === 'all'
+    ? proposals
+    : filter === 'sent'
+      ? proposals.filter(p => p.sent_at !== null)
+      : proposals.filter(p => p.status === filter)
 
   const barData = (() => {
     const months: { mes: string; propuestas: number }[] = []
@@ -122,7 +126,7 @@ export default function DashboardPage() {
 
   const donutData = [
     { name: 'Borrador', value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8' },
-    { name: 'Enviada', value: sent, color: '#4361EE' },
+    { name: 'Enviada', value: proposals.filter(p => p.status === 'sent').length, color: '#4361EE' },
     { name: 'Abierta', value: opened, color: '#F59E0B' },
     { name: 'Firmada', value: signed, color: '#22C55E' },
   ].filter(d => d.value > 0)
