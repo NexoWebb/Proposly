@@ -45,9 +45,17 @@ export default async function ProposalPublicPage({
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFF', fontFamily: "'Georgia', serif" }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .proposal-header { padding: 32px 20px 28px !important; }
+          .proposal-header h1 { font-size: 24px !important; }
+          .proposal-content { padding: 28px 20px !important; }
+          .proposal-total { padding: 16px !important; }
+        }
+      `}</style>
 
       {/* Cabecera navy */}
-      <div style={{ background: '#1C2B5E', padding: '64px 24px 48px' }}>
+      <div className="proposal-header" style={{ background: '#1C2B5E', padding: '64px 24px 48px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>
             {profile?.logo_url
@@ -71,7 +79,7 @@ export default async function ProposalPublicPage({
         </div>
       </div>
 
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '40px 24px' }}>
+      <div className="proposal-content" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px 24px' }}>
 
         {introBlock?.content && (
           <div style={{ marginBottom: '24px' }}>
@@ -101,7 +109,7 @@ export default async function ProposalPublicPage({
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#1C2B5E', borderRadius: '12px', marginTop: '20px' }}>
+            <div className="proposal-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#1C2B5E', borderRadius: '12px', marginTop: '20px' }}>
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>Total sin IVA</span>
               <span style={{ color: '#ffffff', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px' }}>
                 {total.toLocaleString('es-ES')}€

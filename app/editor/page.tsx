@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 type Service = { name: string; price: number }
 type Step = 'template' | 'form'
@@ -85,6 +86,7 @@ const input: React.CSSProperties = {
 
 function EditorContent() {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [step, setStep] = useState<Step>('template')
   const [title, setTitle] = useState('')
   const [clientName, setClientName] = useState('')
@@ -149,7 +151,7 @@ function EditorContent() {
 
   if (step === 'template') {
     return (
-      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '48px 40px 80px' }}>
+      <div style={{ maxWidth: '860px', margin: '0 auto', padding: isMobile ? '24px 16px 60px' : '48px 40px 80px' }}>
         <div style={{ marginBottom: '40px' }}>
           <h1 style={{ fontSize: '26px', fontWeight: '400', color: '#0F172A', margin: '0 0 8px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
             Elige una plantilla
@@ -159,7 +161,7 @@ function EditorContent() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 3}, 1fr)`, gap: '14px', marginBottom: '14px' }}>
           {TEMPLATES.map(tpl => (
             <button
               key={tpl.id}
@@ -211,7 +213,7 @@ function EditorContent() {
   }
 
   return (
-    <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '48px 40px 80px' }}>
+    <div style={{ maxWidth: '1080px', margin: '0 auto', padding: isMobile ? '24px 16px 60px' : '48px 40px 80px' }}>
       <div style={{ marginBottom: '36px', display: 'flex', alignItems: 'center', gap: '16px' }}>
         <button
           onClick={() => setStep('template')}
@@ -227,7 +229,7 @@ function EditorContent() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px', alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '28px' }}>
             <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 18px' }}>Datos de la propuesta</p>

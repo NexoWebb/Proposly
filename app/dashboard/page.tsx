@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useIsMobile } from '@/lib/useIsMobile'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
 type Proposal = {
@@ -72,6 +73,7 @@ type Tab = 'proposals' | 'stats'
 
 export default function DashboardPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<FilterKey>('all')
@@ -131,7 +133,7 @@ export default function DashboardPage() {
     { name: 'Firmada', value: signed, color: '#22C55E' },
   ].filter(d => d.value > 0)
 
-  const totalSent = sent + opened + signed
+  const totalSent = sent
   const apertura = totalSent > 0 ? Math.round((opened + signed) / totalSent * 100) : 0
   const conversion = (opened + signed) > 0 ? Math.round(signed / (opened + signed) * 100) : 0
   const importeFirmado = proposals.filter(p => p.status === 'signed').reduce((s, p) => s + Number(p.total_amount), 0)
@@ -164,33 +166,35 @@ export default function DashboardPage() {
     <div style={{ minHeight: '100vh', background: '#EEF2FF', fontFamily: 'sans-serif' }}>
 
       {/* Topbar */}
-      <div style={{ background: '#1C2B5E', padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px' }}>
+      <div style={{ background: '#1C2B5E', padding: `0 ${isMobile ? '16px' : '40px'}`, display: 'flex', alignItems: 'center', height: '56px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#6EE7B7' }} />
           <span style={{ color: '#ffffff', fontSize: '15px', letterSpacing: '-0.3px', fontWeight: '500' }}>Proposly</span>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <a
-            href="/settings"
-            style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)' }}
-          >
-            Ajustes
-          </a>
+          {!isMobile && (
+            <a
+              href="/settings"
+              style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              Ajustes
+            </a>
+          )}
           <button
             onClick={handleSignOut}
             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}
           >
-            Cerrar sesión
+            {isMobile ? 'Salir' : 'Cerrar sesión'}
           </button>
         </div>
       </div>
 
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '24px 16px' : '48px 24px' }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '32px' }}>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
+            <h1 style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
               Tus propuestas
             </h1>
             <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
@@ -199,14 +203,14 @@ export default function DashboardPage() {
           </div>
           <button
             onClick={() => router.push('/editor')}
-            style={{ background: '#4361EE', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', flexShrink: 0 }}
+            style={{ background: '#4361EE', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', flexShrink: 0, width: isMobile ? '100%' : 'auto' }}
           >
             + Nueva propuesta
           </button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #E2E8F0', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #E2E8F0', marginBottom: '24px' }}>
           <button style={tabStyle('proposals')} onClick={() => setTab('proposals')}>Propuestas</button>
           <button style={tabStyle('stats')} onClick={() => setTab('stats')}>Estadísticas</button>
         </div>
@@ -214,7 +218,7 @@ export default function DashboardPage() {
         {tab === 'proposals' && (
           <>
             {/* Stats clicables */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`, gap: '12px', marginBottom: '24px' }}>
               {stats.map(stat => (
                 <div
                   key={stat.key}
@@ -223,15 +227,15 @@ export default function DashboardPage() {
                     background: '#ffffff',
                     border: filter === stat.key ? '2px solid #4361EE' : '1px solid #E2E8F0',
                     borderRadius: '12px',
-                    padding: filter === stat.key ? '19px' : '20px',
+                    padding: filter === stat.key ? '15px' : '16px',
                     cursor: 'pointer',
                     transition: 'border 0.15s',
                   }}
                 >
-                  <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                  <p style={{ fontSize: '10px', color: '#64748B', margin: '0 0 6px', letterSpacing: '1px', textTransform: 'uppercase' }}>
                     {stat.label}
                   </p>
-                  <p style={{ fontSize: '28px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>
+                  <p style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>
                     {stat.value}
                   </p>
                   {stat.sub && (
@@ -243,7 +247,7 @@ export default function DashboardPage() {
 
             {/* Lista */}
             <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', overflow: 'hidden' }}>
-              <div style={{ padding: '16px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: '11px', color: '#64748B', margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>
                   {filter === 'all' ? 'Todas las propuestas' : `Propuestas ${statusLabel[filter]?.toLowerCase()}s`}
                 </p>
@@ -260,7 +264,7 @@ export default function DashboardPage() {
               {loading ? (
                 <div style={{ padding: '48px', textAlign: 'center', color: '#64748B', fontSize: '14px' }}>Cargando...</div>
               ) : filtered.length === 0 ? (
-                <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+                <div style={{ padding: '48px 24px', textAlign: 'center' }}>
                   <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '20px' }}>
                     {filter === 'all' ? 'Todavía no tienes propuestas' : `No hay propuestas ${statusLabel[filter]?.toLowerCase()}s`}
                   </p>
@@ -275,71 +279,87 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 filtered.map((proposal, index) => (
-                  <div
-                    key={proposal.id}
-                    style={{
-                      padding: '16px 24px',
-                      borderBottom: index < filtered.length - 1 ? '1px solid #F1F5F9' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      cursor: 'pointer',
-                      transition: 'background 0.1s',
-                    }}
-                    onClick={() => router.push(proposal.status === 'signed' ? `/p/${proposal.id}` : `/editor/${proposal.id}`)}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFF')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span style={{ fontSize: '14px' }}>📄</span>
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {proposal.title}
-                      </p>
-                      <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 4px' }}>
-                        {proposal.client_name}
-                      </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>Creada {fmt(proposal.created_at)}</span>
-                        {fmt(proposal.signed_at) && (
-                          <span style={{ fontSize: '11px', color: '#22C55E' }}>Firmada {fmt(proposal.signed_at)}</span>
+                  isMobile ? (
+                    <div
+                      key={proposal.id}
+                      style={{ padding: '14px 16px', borderBottom: index < filtered.length - 1 ? '1px solid #F1F5F9' : 'none', cursor: 'pointer' }}
+                      onClick={() => router.push(proposal.status === 'signed' ? `/p/${proposal.id}` : `/editor/${proposal.id}`)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>
+                          {proposal.title}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor[proposal.status] }} />
+                          <span style={{ fontSize: '11px', color: '#64748B' }}>{statusLabel[proposal.status]}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>{proposal.client_name}</span>
+                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#0F172A' }}>{Number(proposal.total_amount).toLocaleString('es-ES')}€</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <CopyLinkButton id={proposal.id} />
+                        {proposal.status !== 'signed' && (
+                          <button
+                            onClick={e => handleDelete(e, proposal.id)}
+                            style={{ background: 'none', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', color: '#EF4444', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            Eliminar
+                          </button>
                         )}
                       </div>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor[proposal.status] }} />
-                      <span style={{ fontSize: '12px', color: '#64748B' }}>{statusLabel[proposal.status]}</span>
+                  ) : (
+                    <div
+                      key={proposal.id}
+                      style={{
+                        padding: '16px 24px',
+                        borderBottom: index < filtered.length - 1 ? '1px solid #F1F5F9' : 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        cursor: 'pointer',
+                        transition: 'background 0.1s',
+                      }}
+                      onClick={() => router.push(proposal.status === 'signed' ? `/p/${proposal.id}` : `/editor/${proposal.id}`)}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFF')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: '14px' }}>📄</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {proposal.title}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 4px' }}>{proposal.client_name}</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '11px', color: '#94A3B8' }}>Creada {fmt(proposal.created_at)}</span>
+                          {fmt(proposal.signed_at) && (
+                            <span style={{ fontSize: '11px', color: '#22C55E' }}>Firmada {fmt(proposal.signed_at)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor[proposal.status] }} />
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>{statusLabel[proposal.status]}</span>
+                      </div>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', minWidth: '70px', textAlign: 'right' }}>
+                        {Number(proposal.total_amount).toLocaleString('es-ES')}€
+                      </span>
+                      <CopyLinkButton id={proposal.id} />
+                      {proposal.status !== 'signed' && (
+                        <button
+                          onClick={e => handleDelete(e, proposal.id)}
+                          title="Eliminar propuesta"
+                          style={{ background: 'none', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', color: '#EF4444', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
+                        >
+                          Eliminar
+                        </button>
+                      )}
                     </div>
-
-                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', minWidth: '70px', textAlign: 'right' }}>
-                      {Number(proposal.total_amount).toLocaleString('es-ES')}€
-                    </span>
-
-                    <CopyLinkButton id={proposal.id} />
-
-                    {proposal.status !== 'signed' && (
-                      <button
-                        onClick={e => handleDelete(e, proposal.id)}
-                        title="Eliminar propuesta"
-                        style={{
-                          background: 'none',
-                          border: '1px solid #E2E8F0',
-                          borderRadius: '6px',
-                          padding: '4px 10px',
-                          fontSize: '11px',
-                          color: '#EF4444',
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Eliminar
-                      </button>
-                    )}
-                  </div>
+                  )
                 ))
               )}
             </div>
@@ -349,31 +369,29 @@ export default function DashboardPage() {
         {tab === 'stats' && (
           <>
             {/* KPIs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px' }}>
-                <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Tasa de apertura</p>
-                <p style={{ fontSize: '32px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>{apertura}%</p>
-                <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0 }}>{opened + signed} de {totalSent} enviadas</p>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px' }}>
+                <p style={{ fontSize: '10px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Tasa de apertura</p>
+                <p style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>{apertura}%</p>
+                <p style={{ fontSize: '10px', color: '#94A3B8', margin: 0 }}>{opened + signed} de {totalSent}</p>
               </div>
-              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px' }}>
-                <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Tasa de firma</p>
-                <p style={{ fontSize: '32px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>{conversion}%</p>
-                <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0 }}>{signed} de {opened + signed} abiertas</p>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px' }}>
+                <p style={{ fontSize: '10px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Tasa de firma</p>
+                <p style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>{conversion}%</p>
+                <p style={{ fontSize: '10px', color: '#94A3B8', margin: 0 }}>{signed} de {opened + signed}</p>
               </div>
-              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px' }}>
-                <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Importe firmado</p>
-                <p style={{ fontSize: '32px', fontWeight: '400', color: '#22C55E', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>{importeFirmado.toLocaleString('es-ES')}€</p>
-                <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0 }}>{signed} propuesta{signed !== 1 ? 's' : ''}</p>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px', gridColumn: isMobile ? '1 / -1' : 'auto' }}>
+                <p style={{ fontSize: '10px', color: '#64748B', margin: '0 0 8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Importe firmado</p>
+                <p style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '400', color: '#22C55E', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>{importeFirmado.toLocaleString('es-ES')}€</p>
+                <p style={{ fontSize: '10px', color: '#94A3B8', margin: 0 }}>{signed} propuesta{signed !== 1 ? 's' : ''}</p>
               </div>
             </div>
 
             {/* Charts */}
             {proposals.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '24px' }}>
-                  <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 20px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                    Propuestas por mes
-                  </p>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
+                <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px' }}>
+                  <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 20px', letterSpacing: '1px', textTransform: 'uppercase' }}>Propuestas por mes</p>
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={barData} barSize={20}>
                       <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
@@ -383,11 +401,8 @@ export default function DashboardPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-
-                <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '24px' }}>
-                  <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 20px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                    Distribución por estado
-                  </p>
+                <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px' }}>
+                  <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 20px', letterSpacing: '1px', textTransform: 'uppercase' }}>Distribución por estado</p>
                   <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
                       <Pie data={donutData} cx="50%" cy="50%" innerRadius={48} outerRadius={68} paddingAngle={3} dataKey="value">
@@ -400,7 +415,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '64px 24px', textAlign: 'center' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '48px 24px', textAlign: 'center' }}>
                 <p style={{ color: '#64748B', fontSize: '14px', margin: 0 }}>Crea tu primera propuesta para ver estadísticas</p>
               </div>
             )}
