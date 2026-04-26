@@ -92,6 +92,7 @@ function EditorContent() {
   const [intro, setIntro] = useState('')
   const [services, setServices] = useState<Service[]>([{ name: '', price: 0 }])
   const [saving, setSaving] = useState(false)
+  const [sending, setSending] = useState(false)
 
   const selectTemplate = (tpl: typeof TEMPLATES[0] | null) => {
     if (tpl) {
@@ -113,16 +114,35 @@ function EditorContent() {
   }
   const removeService = (i: number) => setServices(services.filter((_, idx) => idx !== i))
 
+  const buildBlocks = () => [
+    { type: 'intro', content: intro },
+    { type: 'services', content: services },
+  ]
+
   const handleSave = async () => {
     setSaving(true)
-    const blocks = [
-      { type: 'intro', content: intro },
-      { type: 'services', content: services },
-    ]
     const { data: { user } } = await supabase.auth.getUser()
     await supabase.from('proposals').insert({
       user_id: user?.id, title, client_name: clientName,
-      client_email: clientEmail, blocks, total_amount: total, status: 'draft',
+      client_email: clientEmail, blocks: buildBlocks(), total_amount: total, status: 'draft',
+    })
+    router.push('/dashboard')
+  }
+
+  const handleSend = async () => {
+    setSending(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data } = await supabase.from('proposals').insert({
+      user_id: user?.id, title, client_name: clientName,
+      client_email: clientEmail, blocks: buildBlocks(), total_amount: total, status: 'draft',
+    }).select('id').single()
+
+    if (!data?.id) { setSending(false); return }
+
+    await fetch('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: data.id }),
     })
     router.push('/dashboard')
   }
@@ -256,10 +276,17 @@ function EditorContent() {
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || !title}
-              style={{ flex: 2, background: saving || !title ? '#C7D2FE' : '#4361EE', color: saving || !title ? '#818CF8' : '#fff', border: 'none', padding: '13px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: saving || !title ? 'default' : 'pointer' }}
+              disabled={saving || sending || !title}
+              style={{ flex: 1, background: saving || !title ? '#C7D2FE' : '#4361EE', color: saving || !title ? '#818CF8' : '#fff', border: 'none', padding: '13px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: saving || !title ? 'default' : 'pointer' }}
             >
-              {saving ? 'Guardando...' : 'Guardar propuesta'}
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={sending || saving || !title || !clientEmail}
+              style={{ flex: 2, background: sending || !title || !clientEmail ? '#A7F3D0' : '#059669', color: sending || !title || !clientEmail ? '#6EE7B7' : '#fff', border: 'none', padding: '13px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: sending || !title || !clientEmail ? 'default' : 'pointer' }}
+            >
+              {sending ? 'Enviando...' : 'Enviar al cliente'}
             </button>
           </div>
         </div>
