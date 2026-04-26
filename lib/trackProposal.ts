@@ -51,6 +51,5 @@ export async function trackProposal(id: string): Promise<void> {
         </div>
       `,
     })
-    if (error) console.error('[trackProposal] Resend error:', error)
   }
 }

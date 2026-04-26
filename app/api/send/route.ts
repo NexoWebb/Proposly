@@ -46,10 +46,7 @@ export async function POST(request: NextRequest) {
     `,
   })
 
-  if (error) {
-    console.error('[api/send] Resend error:', JSON.stringify(error))
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await supabase
     .from('proposals')
