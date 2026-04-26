@@ -25,8 +25,10 @@ export async function trackProposal(id: string): Promise<void> {
     .eq('id', id)
 
   if (!yaAbierta) {
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(proposal.user_id)
+    const { data: userData, error: authError } = await supabaseAdmin.auth.admin.getUserById(proposal.user_id)
+    console.log('[trackProposal] getUserById:', JSON.stringify({ userData, authError }))
     const ownerEmail = userData?.user?.email
+    console.log('[trackProposal] ownerEmail:', ownerEmail)
     if (!ownerEmail) return
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
