@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -24,10 +25,14 @@ export async function trackProposal(id: string): Promise<void> {
     .eq('id', id)
 
   if (!yaAbierta) {
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(proposal.user_id)
+    const ownerEmail = userData?.user?.email
+    if (!ownerEmail) return
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     await resend.emails.send({
       from: 'Proposly <onboarding@resend.dev>',
-      to: process.env.NOTIFICATION_EMAIL!,
+      to: ownerEmail,
       subject: `Tu cliente abrió la propuesta`,
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
