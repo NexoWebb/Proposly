@@ -94,7 +94,7 @@ export default function DashboardPage() {
     fetchProposals()
   }, [fetchProposals])
 
-  const sent = proposals.filter(p => p.sent_at !== null).length
+  const sent = proposals.filter(p => p.status !== 'draft').length
   const opened = proposals.filter(p => p.status === 'opened').length
   const signed = proposals.filter(p => p.status === 'signed').length
 
@@ -108,7 +108,7 @@ export default function DashboardPage() {
   const filtered = filter === 'all'
     ? proposals
     : filter === 'sent'
-      ? proposals.filter(p => p.sent_at !== null)
+      ? proposals.filter(p => p.status !== 'draft')
       : proposals.filter(p => p.status === filter)
 
   const barData = (() => {
