@@ -1,4 +1,5 @@
 import EditorEdit from './EditorEdit'
+import UserLogo from '@/components/UserLogo'
 
 export default async function EditProposalPage({
   params,
@@ -15,9 +16,8 @@ export default async function EditProposalPage({
         >
           ← Dashboard
         </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}>
-          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#6EE7B7' }} />
-          <span style={{ color: '#ffffff', fontSize: '15px', letterSpacing: '-0.3px', fontWeight: '500' }}>Proposly</span>
+        <div style={{ margin: '0 auto' }}>
+          <UserLogo />
         </div>
         <div style={{ width: '80px' }} />
       </div>

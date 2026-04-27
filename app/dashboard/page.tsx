@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
+import UserLogo from '@/components/UserLogo'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
 type Proposal = {
@@ -167,10 +168,7 @@ export default function DashboardPage() {
 
       {/* Topbar */}
       <div style={{ background: '#1C2B5E', padding: `0 ${isMobile ? '16px' : '40px'}`, display: 'flex', alignItems: 'center', height: '56px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#6EE7B7' }} />
-          <span style={{ color: '#ffffff', fontSize: '15px', letterSpacing: '-0.3px', fontWeight: '500' }}>Proposly</span>
-        </div>
+        <UserLogo />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <a
             href="/settings"
