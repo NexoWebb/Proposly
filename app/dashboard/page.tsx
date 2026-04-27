@@ -90,7 +90,7 @@ export default function DashboardPage() {
 
   const stats: { label: string; key: FilterKey; value: number; sub?: string }[] = [
     { label: 'Total', key: 'all', value: proposals.length },
-    { label: 'Enviadas', key: 'sent', value: everSent, sub: 'Total enviadas alguna vez' },
+    { label: 'Enviadas', key: 'sent', value: sent, sub: 'Sin abrir ni firmar' },
     { label: 'Abiertas', key: 'opened', value: opened, sub: 'Pendientes de firma' },
     { label: 'Firmadas', key: 'signed', value: signed },
   ]
