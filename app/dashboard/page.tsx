@@ -97,7 +97,7 @@ export default function DashboardPage() {
     fetchProposals()
   }, [fetchProposals])
 
-  const sent = proposals.filter(p => p.status !== 'opened' && p.status !== 'signed').length
+  const sent = proposals.filter(p => p.status === 'sent').length
   const opened = proposals.filter(p => p.status === 'opened').length
   const signed = proposals.filter(p => p.status === 'signed').length
 
@@ -134,7 +134,7 @@ export default function DashboardPage() {
     { name: 'Firmada', value: signed, color: '#22C55E' },
   ].filter(d => d.value > 0)
 
-  const totalSent = sent
+  const totalSent = sent + opened + signed
   const apertura = totalSent > 0 ? Math.round((opened + signed) / totalSent * 100) : 0
   const conversion = (opened + signed) > 0 ? Math.round(signed / (opened + signed) * 100) : 0
   const importeFirmado = proposals.filter(p => p.status === 'signed').reduce((s, p) => s + Number(p.total_amount), 0)

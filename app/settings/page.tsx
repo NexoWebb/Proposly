@@ -33,6 +33,8 @@ export default function SettingsPage() {
   const [profileMsg, setProfileMsg] = useState('')
   const [passwordMsg, setPasswordMsg] = useState('')
   const [loading, setLoading] = useState(true)
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
+  const [deletingTpl, setDeletingTpl] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -44,6 +46,12 @@ export default function SettingsPage() {
         setName(data.name ?? '')
         setLogoUrl(data.logo_url ?? null)
       }
+      const { data: tpls } = await supabase
+        .from('templates')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      setTemplates(tpls ?? [])
       setLoading(false)
     }
     load()
@@ -87,6 +95,13 @@ export default function SettingsPage() {
 
     setProfileMsg(error ? 'Error al guardar: ' + error.message : '✓ Perfil actualizado')
     setSavingProfile(false)
+  }
+
+  const handleDeleteTemplate = async (id: string) => {
+    setDeletingTpl(id)
+    await supabase.from('templates').delete().eq('id', id)
+    setTemplates(prev => prev.filter(t => t.id !== id))
+    setDeletingTpl(null)
   }
 
   const handleSavePassword = async () => {
@@ -180,6 +195,29 @@ export default function SettingsPage() {
           >
             {savingProfile ? 'Guardando...' : 'Guardar perfil'}
           </button>
+        </div>
+
+        {/* Plantillas */}
+        <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '28px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Mis plantillas</p>
+          {templates.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0 }}>Aún no tienes plantillas guardadas.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {templates.map(tpl => (
+                <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '14px', color: '#0F172A', fontFamily: 'sans-serif' }}>{tpl.name}</span>
+                  <button
+                    onClick={() => handleDeleteTemplate(tpl.id)}
+                    disabled={deletingTpl === tpl.id}
+                    style={{ background: 'transparent', border: 'none', color: '#EF4444', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', fontFamily: 'sans-serif' }}
+                  >
+                    {deletingTpl === tpl.id ? '...' : 'Eliminar'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Contraseña */}

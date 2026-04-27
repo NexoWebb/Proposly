@@ -1,66 +1,15 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import UserLogo from '@/components/UserLogo'
 import { useIsMobile } from '@/lib/useIsMobile'
 import BlockEditor, { Block, computeTotal, mkBlock } from '@/components/BlockEditor'
 
-type Step = 'template' | 'editor'
+type Step = 'picker' | 'editor'
 
-const TEMPLATES = [
-  {
-    id: 'marketing', icon: '📢', label: 'Agencia de marketing',
-    intro: 'Gracias por confiar en nosotros para impulsar tu presencia digital. Hemos diseñado esta propuesta adaptada a tus objetivos, con acciones concretas que generarán resultados medibles desde el primer mes.',
-    services: [
-      { name: 'Estrategia de contenidos y SEO', price: 900 },
-      { name: 'Gestión de redes sociales (2 canales)', price: 750 },
-      { name: 'Campañas SEM (Google Ads)', price: 600 },
-      { name: 'Analítica y reporting mensual', price: 350 },
-    ],
-  },
-  {
-    id: 'fotografia', icon: '📷', label: 'Fotografía',
-    intro: 'Es un placer presentarte esta propuesta. Mi objetivo es capturar la esencia de tu proyecto con imágenes que transmitan exactamente lo que buscas, con total flexibilidad para adaptarme a tu calendario.',
-    services: [
-      { name: 'Sesión fotográfica (medio día)', price: 450 },
-      { name: 'Edición y retoque profesional', price: 250 },
-      { name: 'Entrega de galería digital', price: 100 },
-      { name: 'Derechos de uso comercial', price: 200 },
-    ],
-  },
-  {
-    id: 'consultoria', icon: '💼', label: 'Consultoría',
-    intro: 'Tras el análisis inicial de tu empresa, hemos identificado las áreas de mejora con mayor impacto. Esta propuesta recoge un plan de trabajo claro, con entregables definidos y un calendario realista.',
-    services: [
-      { name: 'Auditoría inicial y diagnóstico', price: 1200 },
-      { name: 'Plan estratégico personalizado', price: 1800 },
-      { name: 'Sesiones de seguimiento (×4)', price: 800 },
-      { name: 'Informe final de resultados', price: 600 },
-    ],
-  },
-  {
-    id: 'diseno-web', icon: '🖥️', label: 'Diseño web',
-    intro: 'Queremos ayudarte a tener una presencia online que refleje la calidad de tu negocio. Esta propuesta incluye diseño, desarrollo y puesta en marcha, con soporte incluido el primer mes.',
-    services: [
-      { name: 'Diseño UX/UI (hasta 5 páginas)', price: 1500 },
-      { name: 'Desarrollo web a medida', price: 2500 },
-      { name: 'SEO técnico y optimización', price: 600 },
-      { name: 'Formación y mantenimiento (1 mes)', price: 400 },
-    ],
-  },
-  {
-    id: 'reformas', icon: '🔨', label: 'Reformas',
-    intro: 'Presentamos nuestra propuesta para la reforma de tu espacio. Todos nuestros trabajos incluyen materiales de primera calidad, mano de obra especializada y limpieza final. Garantía de 2 años.',
-    services: [
-      { name: 'Demolición y preparación', price: 800 },
-      { name: 'Obra civil y albañilería', price: 3500 },
-      { name: 'Instalación eléctrica y fontanería', price: 1800 },
-      { name: 'Acabados y pintura', price: 1200 },
-    ],
-  },
-]
+type UserTemplate = { id: string; name: string; blocks: Block[] }
 
 const inp: React.CSSProperties = {
   width: '100%', background: '#f5f4f0', border: '1px solid #e8e3dc',
@@ -68,30 +17,52 @@ const inp: React.CSSProperties = {
   color: '#0f0f0f', outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
 }
 
-function templateToBlocks(tpl: typeof TEMPLATES[0]): Block[] {
-  return [
-    { id: crypto.randomUUID(), type: 'text', content: tpl.intro },
-    { id: crypto.randomUUID(), type: 'services', content: tpl.services },
-  ]
-}
-
 function EditorContent() {
   const router = useRouter()
   const isMobile = useIsMobile()
 
-  const [step, setStep] = useState<Step>('template')
+  const [step, setStep] = useState<Step>('picker')
   const [userId, setUserId] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<UserTemplate[]>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [title, setTitle] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
   const [blocks, setBlocks] = useState<Block[]>([])
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [tplName, setTplName] = useState('')
+  const [savingTpl, setSavingTpl] = useState(false)
 
-  const selectTemplate = async (tpl: typeof TEMPLATES[0] | null) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    setUserId(user?.id ?? null)
-    setBlocks(tpl ? templateToBlocks(tpl) : [mkBlock('text')])
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setUserId(user.id)
+      const { data } = await supabase
+        .from('templates')
+        .select('id, name, blocks')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      const tpls = (data ?? []) as UserTemplate[]
+      setTemplates(tpls)
+      if (tpls.length === 0) {
+        setBlocks([mkBlock('text')])
+        setStep('editor')
+      }
+      setLoadingTemplates(false)
+    }
+    init()
+  }, [])
+
+  const startWithTemplate = (tpl: UserTemplate) => {
+    setBlocks(tpl.blocks.map(b => ({ ...b, id: crypto.randomUUID() })))
+    setStep('editor')
+  }
+
+  const startEmpty = () => {
+    setBlocks([mkBlock('text')])
     setStep('editor')
   }
 
@@ -121,36 +92,50 @@ function EditorContent() {
     router.push('/dashboard')
   }
 
+  const handleSaveTemplate = async () => {
+    if (!tplName.trim() || !userId) return
+    setSavingTpl(true)
+    await supabase.from('templates').insert({ user_id: userId, name: tplName.trim(), blocks })
+    setTplName('')
+    setShowModal(false)
+    setSavingTpl(false)
+  }
+
   const canSave = !!title && !saving && !sending
   const canSend = !!title && !!clientEmail && !saving && !sending
 
-  if (step === 'template') {
+  if (loadingTemplates) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '14px' }}>
+        Cargando...
+      </div>
+    )
+  }
+
+  if (step === 'picker') {
     return (
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: isMobile ? '24px 16px 60px' : '48px 40px 80px' }}>
         <div style={{ marginBottom: '40px' }}>
           <h1 style={{ fontSize: isMobile ? '22px' : '26px', fontWeight: '400', color: '#0f0f0f', margin: '0 0 8px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
-            Elige una plantilla
+            Mis plantillas
           </h1>
           <p style={{ fontSize: '14px', color: '#888', margin: 0, fontFamily: 'sans-serif' }}>
-            Empieza con datos de ejemplo o desde cero
+            Elige una plantilla guardada o empieza desde cero
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 3}, 1fr)`, gap: '12px', marginBottom: '12px' }}>
-          {TEMPLATES.map(tpl => (
-            <button key={tpl.id} onClick={() => selectTemplate(tpl)}
+          {templates.map(tpl => (
+            <button key={tpl.id} onClick={() => startWithTemplate(tpl)}
               style={{ background: '#fff', border: '1px solid #e8e3dc', borderRadius: '12px', padding: isMobile ? '16px' : '24px', textAlign: 'left', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }}
-              onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = '#0f0f0f'; b.style.boxShadow = '0 0 0 3px #f0ede8' }}
-              onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = '#e8e3dc'; b.style.boxShadow = 'none' }}
+              onMouseEnter={e => { const b = e.currentTarget; b.style.borderColor = '#0f0f0f'; b.style.boxShadow = '0 0 0 3px #f0ede8' }}
+              onMouseLeave={e => { const b = e.currentTarget; b.style.borderColor = '#e8e3dc'; b.style.boxShadow = 'none' }}
             >
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>{tpl.icon}</div>
-              <p style={{ fontSize: '13px', fontWeight: '500', color: '#0f0f0f', margin: '0 0 4px', fontFamily: 'sans-serif' }}>{tpl.label}</p>
-              <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontFamily: 'sans-serif' }}>
-                {tpl.services.length} servicios · {tpl.services.reduce((s, sv) => s + sv.price, 0).toLocaleString('es-ES')}€
-              </p>
+              <p style={{ fontSize: '13px', fontWeight: '500', color: '#0f0f0f', margin: '0 0 4px', fontFamily: 'sans-serif' }}>{tpl.name}</p>
+              <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontFamily: 'sans-serif' }}>{tpl.blocks.length} bloques</p>
             </button>
           ))}
         </div>
-        <button onClick={() => selectTemplate(null)}
+        <button onClick={startEmpty}
           style={{ width: '100%', background: 'transparent', border: '1px dashed #e8e3dc', borderRadius: '12px', padding: '18px', fontSize: '14px', color: '#888', cursor: 'pointer', fontFamily: 'sans-serif' }}>
           Empezar desde cero →
         </button>
@@ -159,45 +144,79 @@ function EditorContent() {
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 80px' : '48px 40px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: isMobile ? '24px' : '48px', alignItems: 'start' }}>
+    <>
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '400px' }}>
+            <p style={{ fontSize: '16px', fontWeight: '500', color: '#0f0f0f', margin: '0 0 16px', fontFamily: 'Georgia, serif' }}>Guardar como plantilla</p>
+            <input
+              style={inp}
+              placeholder="Nombre de la plantilla"
+              value={tplName}
+              onChange={e => setTplName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => { setShowModal(false); setTplName('') }}
+                style={{ flex: 1, background: 'transparent', border: '1px solid #e8e3dc', borderRadius: '10px', padding: '10px', fontSize: '13px', color: '#888', cursor: 'pointer', fontFamily: 'sans-serif' }}>
+                Cancelar
+              </button>
+              <button onClick={handleSaveTemplate} disabled={!tplName.trim() || savingTpl}
+                style={{ flex: 1, background: tplName.trim() && !savingTpl ? '#0f0f0f' : '#e8e3dc', color: tplName.trim() && !savingTpl ? '#fff' : '#aaa', border: 'none', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '500', cursor: tplName.trim() && !savingTpl ? 'pointer' : 'default', fontFamily: 'sans-serif' }}>
+                {savingTpl ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Sidebar */}
-      <div style={{ position: isMobile ? 'static' : 'sticky', top: '80px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <button onClick={() => setStep('template')}
-          style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '13px', cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'sans-serif', marginBottom: '4px' }}>
-          ← Plantillas
-        </button>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 80px' : '48px 40px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: isMobile ? '24px' : '48px', alignItems: 'start' }}>
 
-        <div style={{ background: '#fff', border: '1px solid #e8e3dc', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
-          <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
-          <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
-          <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+        {/* Sidebar */}
+        <div style={{ position: isMobile ? 'static' : 'sticky', top: '80px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {templates.length > 0 && (
+            <button onClick={() => setStep('picker')}
+              style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '13px', cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'sans-serif', marginBottom: '4px' }}>
+              ← Plantillas
+            </button>
+          )}
+
+          <div style={{ background: '#fff', border: '1px solid #e8e3dc', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
+            <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
+            <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
+            <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+          </div>
+
+          <button onClick={() => setShowModal(true)}
+            style={{ background: 'transparent', border: '1px solid #e8e3dc', borderRadius: '10px', padding: '11px', fontSize: '13px', color: '#555', cursor: 'pointer', fontFamily: 'sans-serif' }}>
+            Guardar como plantilla
+          </button>
+          <button onClick={() => router.push('/dashboard')}
+            style={{ background: 'transparent', color: '#888', border: '1px solid #e8e3dc', padding: '11px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontFamily: 'sans-serif' }}>
+            Cancelar
+          </button>
+          <button onClick={handleSave} disabled={!canSave}
+            style={{ background: canSave ? '#0f0f0f' : '#e8e3dc', color: canSave ? '#fff' : '#aaa', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default', fontFamily: 'sans-serif' }}>
+            {saving ? 'Guardando...' : 'Guardar borrador'}
+          </button>
+          <button onClick={handleSend} disabled={!canSend}
+            style={{ background: canSend ? '#059669' : '#d1fae5', color: canSend ? '#fff' : '#6ee7b7', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default', fontFamily: 'sans-serif' }}>
+            {sending ? 'Enviando...' : 'Enviar al cliente'}
+          </button>
         </div>
 
-        <button onClick={() => router.push('/dashboard')}
-          style={{ background: 'transparent', color: '#888', border: '1px solid #e8e3dc', padding: '11px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontFamily: 'sans-serif' }}>
-          Cancelar
-        </button>
-        <button onClick={handleSave} disabled={!canSave}
-          style={{ background: canSave ? '#0f0f0f' : '#e8e3dc', color: canSave ? '#fff' : '#aaa', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default', fontFamily: 'sans-serif' }}>
-          {saving ? 'Guardando...' : 'Guardar borrador'}
-        </button>
-        <button onClick={handleSend} disabled={!canSend}
-          style={{ background: canSend ? '#059669' : '#d1fae5', color: canSend ? '#fff' : '#6ee7b7', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default', fontFamily: 'sans-serif' }}>
-          {sending ? 'Enviando...' : 'Enviar al cliente'}
-        </button>
-      </div>
+        {/* Canvas */}
+        <div>
+          <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 20px', fontFamily: 'sans-serif' }}>
+            Contenido
+          </p>
+          <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
+        </div>
 
-      {/* Canvas */}
-      <div>
-        <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 20px', fontFamily: 'sans-serif' }}>
-          Contenido
-        </p>
-        <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
       </div>
-
-    </div>
+    </>
   )
 }
 
