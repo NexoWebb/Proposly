@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import AcceptButton from '@/components/AcceptButton'
 import { trackProposal } from '@/lib/trackProposal'
 
+export const dynamic = 'force-dynamic'
+
 type Service = {
   name: string
   price: number
