@@ -62,30 +62,31 @@ const TEMPLATES = [
   },
 ]
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: '#F8FAFC', border: '1px solid #E2E8F0',
+const inp: React.CSSProperties = {
+  width: '100%', background: '#f5f4f0', border: '1px solid #e8e3dc',
   borderRadius: '8px', padding: '10px 14px', fontSize: '14px',
-  color: '#0F172A', outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
+  color: '#0f0f0f', outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
 }
 
 function templateToBlocks(tpl: typeof TEMPLATES[0]): Block[] {
   return [
-    { id: crypto.randomUUID(), type: 'text', content: tpl.intro },
+    { id: crypto.randomUUID(), type: 'text',     content: tpl.intro },
     { id: crypto.randomUUID(), type: 'services', content: tpl.services },
   ]
 }
 
 function EditorContent() {
-  const router = useRouter()
+  const router   = useRouter()
   const isMobile = useIsMobile()
-  const [step, setStep] = useState<Step>('template')
-  const [userId, setUserId] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
-  const [clientName, setClientName] = useState('')
+
+  const [step,        setStep]        = useState<Step>('template')
+  const [userId,      setUserId]      = useState<string | null>(null)
+  const [title,       setTitle]       = useState('')
+  const [clientName,  setClientName]  = useState('')
   const [clientEmail, setClientEmail] = useState('')
-  const [blocks, setBlocks] = useState<Block[]>([])
-  const [saving, setSaving] = useState(false)
-  const [sending, setSending] = useState(false)
+  const [blocks,      setBlocks]      = useState<Block[]>([])
+  const [saving,      setSaving]      = useState(false)
+  const [sending,     setSending]     = useState(false)
 
   const selectTemplate = async (tpl: typeof TEMPLATES[0] | null) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -94,23 +95,23 @@ function EditorContent() {
     setStep('editor')
   }
 
-  const handleSave = async () => {
-    setSaving(true)
+  const persist = async () => {
     const uid = userId ?? (await supabase.auth.getUser()).data.user?.id
-    await supabase.from('proposals').insert({
+    return supabase.from('proposals').insert({
       user_id: uid, title, client_name: clientName, client_email: clientEmail,
       blocks, total_amount: computeTotal(blocks), status: 'draft',
-    })
+    }).select('id').single()
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    await persist()
     router.push('/dashboard')
   }
 
   const handleSend = async () => {
     setSending(true)
-    const uid = userId ?? (await supabase.auth.getUser()).data.user?.id
-    const { data } = await supabase.from('proposals').insert({
-      user_id: uid, title, client_name: clientName, client_email: clientEmail,
-      blocks, total_amount: computeTotal(blocks), status: 'draft',
-    }).select('id').single()
+    const { data } = await persist()
     if (!data?.id) { setSending(false); return }
     await fetch('/api/send', {
       method: 'POST',
@@ -123,87 +124,105 @@ function EditorContent() {
   const canSave = !!title && !saving && !sending
   const canSend = !!title && !!clientEmail && !saving && !sending
 
+  /* ── Template picker ─────────────────────── */
   if (step === 'template') {
     return (
       <div style={{ maxWidth: '860px', margin: '0 auto', padding: isMobile ? '24px 16px 60px' : '48px 40px 80px' }}>
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: '400', color: '#0F172A', margin: '0 0 8px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
+          <h1 style={{ fontSize: isMobile ? '22px' : '26px', fontWeight: '400', color: '#0f0f0f', margin: '0 0 8px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>
             Elige una plantilla
           </h1>
-          <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>Empieza con datos de ejemplo o desde cero</p>
+          <p style={{ fontSize: '14px', color: '#888', margin: 0, fontFamily: 'sans-serif' }}>
+            Empieza con datos de ejemplo o desde cero
+          </p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 3}, 1fr)`, gap: '14px', marginBottom: '14px' }}>
+
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 3}, 1fr)`, gap: '12px', marginBottom: '12px' }}>
           {TEMPLATES.map(tpl => (
             <button key={tpl.id} onClick={() => selectTemplate(tpl)}
-              style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '24px', textAlign: 'left', cursor: 'pointer' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#4361EE'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 3px #EEF2FF' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#E2E8F0'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none' }}
+              style={{ background: '#fff', border: '1px solid #e8e3dc', borderRadius: '12px', padding: isMobile ? '16px' : '24px', textAlign: 'left', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }}
+              onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = '#0f0f0f'; b.style.boxShadow = '0 0 0 3px #f0ede8' }}
+              onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = '#e8e3dc'; b.style.boxShadow = 'none' }}
             >
-              <div style={{ fontSize: '28px', marginBottom: '12px' }}>{tpl.icon}</div>
-              <p style={{ fontSize: '14px', fontWeight: '500', color: '#0F172A', margin: '0 0 6px' }}>{tpl.label}</p>
-              <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>{tpl.icon}</div>
+              <p style={{ fontSize: '13px', fontWeight: '500', color: '#0f0f0f', margin: '0 0 4px', fontFamily: 'sans-serif' }}>{tpl.label}</p>
+              <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontFamily: 'sans-serif' }}>
                 {tpl.services.length} servicios · {tpl.services.reduce((s, sv) => s + sv.price, 0).toLocaleString('es-ES')}€
               </p>
             </button>
           ))}
         </div>
+
         <button onClick={() => selectTemplate(null)}
-          style={{ width: '100%', background: 'transparent', border: '1px dashed #CBD5E1', borderRadius: '12px', padding: '20px', fontSize: '14px', color: '#64748B', cursor: 'pointer' }}>
+          style={{ width: '100%', background: 'transparent', border: '1px dashed #e8e3dc', borderRadius: '12px', padding: '18px', fontSize: '14px', color: '#888', cursor: 'pointer', fontFamily: 'sans-serif' }}>
           Empezar desde cero →
         </button>
       </div>
     )
   }
 
+  /* ── Block editor ────────────────────────── */
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '24px 16px 80px' : '40px 40px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '300px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div style={{
+      maxWidth: '1280px', margin: '0 auto',
+      padding: isMobile ? '20px 16px 80px' : '36px 32px 80px',
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '240px 1fr',
+      gap: isMobile ? '20px' : '28px',
+      alignItems: 'start',
+    }}>
 
-      {/* Sidebar — metadata + acciones */}
-      <div style={{ position: isMobile ? 'static' : 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* ── Sidebar ── */}
+      <div style={{ position: isMobile ? 'static' : 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <button onClick={() => setStep('template')}
-          style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '13px', cursor: 'pointer', padding: 0, textAlign: 'left', marginBottom: '4px' }}>
+          style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '13px', cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'sans-serif', marginBottom: '4px' }}>
           ← Plantillas
         </button>
 
-        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 4px' }}>Datos</p>
-          <input style={inputStyle} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
-          <input style={inputStyle} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
-          <input style={inputStyle} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+        {/* Metadata */}
+        <div style={{ background: '#fff', border: '1px solid #e8e3dc', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
+          <input style={inp} placeholder="Título de la propuesta" value={title}       onChange={e => setTitle(e.target.value)} />
+          <input style={inp} placeholder="Nombre del cliente"     value={clientName}  onChange={e => setClientName(e.target.value)} />
+          <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
         </div>
 
+        {/* Actions */}
         <button onClick={() => router.push('/dashboard')}
-          style={{ background: 'transparent', color: '#64748B', border: '1px solid #E2E8F0', padding: '11px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer' }}>
+          style={{ background: 'transparent', color: '#888', border: '1px solid #e8e3dc', padding: '11px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontFamily: 'sans-serif' }}>
           Cancelar
         </button>
         <button onClick={handleSave} disabled={!canSave}
-          style={{ background: canSave ? '#4361EE' : '#C7D2FE', color: canSave ? '#fff' : '#818CF8', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default' }}>
+          style={{ background: canSave ? '#0f0f0f' : '#e8e3dc', color: canSave ? '#fff' : '#aaa', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default', fontFamily: 'sans-serif', transition: 'background 0.15s' }}>
           {saving ? 'Guardando...' : 'Guardar borrador'}
         </button>
         <button onClick={handleSend} disabled={!canSend}
-          style={{ background: canSend ? '#059669' : '#A7F3D0', color: canSend ? '#fff' : '#6EE7B7', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default' }}>
+          style={{ background: canSend ? '#059669' : '#d1fae5', color: canSend ? '#fff' : '#6ee7b7', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default', fontFamily: 'sans-serif', transition: 'background 0.15s' }}>
           {sending ? 'Enviando...' : 'Enviar al cliente'}
         </button>
       </div>
 
-      {/* Canvas de bloques */}
+      {/* ── Canvas ── */}
       <div>
-        <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 16px' }}>Contenido</p>
+        <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 14px', fontFamily: 'sans-serif' }}>
+          Contenido
+        </p>
         <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
       </div>
+
     </div>
   )
 }
 
 export default function EditorPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#EEF2FF', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: '#1C2B5E', padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0 }}>
+    <div style={{ minHeight: '100vh', background: '#f8f7f4', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: '#1C2B5E', padding: '0 24px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0 }}>
         <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none' }}>← Dashboard</a>
         <div style={{ margin: '0 auto' }}><UserLogo /></div>
         <div style={{ width: '80px' }} />
       </div>
-      <Suspense fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: '14px' }}>Cargando...</div>}>
+      <Suspense fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '14px' }}>Cargando...</div>}>
         <EditorContent />
       </Suspense>
     </div>

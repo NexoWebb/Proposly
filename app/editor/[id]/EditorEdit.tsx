@@ -3,23 +3,26 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useIsMobile } from '@/lib/useIsMobile'
 import BlockEditor, { Block, computeTotal, normalizeBlocks } from '@/components/BlockEditor'
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: '#F8FAFC', border: '1px solid #E2E8F0',
+const inp: React.CSSProperties = {
+  width: '100%', background: '#f5f4f0', border: '1px solid #e8e3dc',
   borderRadius: '8px', padding: '10px 14px', fontSize: '14px',
-  color: '#0F172A', outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
+  color: '#0f0f0f', outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
 }
 
 export default function EditorEdit({ id }: { id: string }) {
-  const router = useRouter()
-  const [userId, setUserId] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
-  const [clientName, setClientName] = useState('')
+  const router   = useRouter()
+  const isMobile = useIsMobile()
+
+  const [userId,      setUserId]      = useState<string | null>(null)
+  const [title,       setTitle]       = useState('')
+  const [clientName,  setClientName]  = useState('')
   const [clientEmail, setClientEmail] = useState('')
-  const [blocks, setBlocks] = useState<Block[]>([])
-  const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [blocks,      setBlocks]      = useState<Block[]>([])
+  const [saving,      setSaving]      = useState(false)
+  const [loading,     setLoading]     = useState(true)
 
   useEffect(() => {
     const load = async () => {
@@ -52,44 +55,60 @@ export default function EditorEdit({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: '14px' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '14px', fontFamily: 'sans-serif' }}>
         Cargando propuesta...
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 40px 80px', display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div style={{
+      maxWidth: '1280px', margin: '0 auto',
+      padding: isMobile ? '20px 16px 80px' : '36px 32px 80px',
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '240px 1fr',
+      gap: isMobile ? '20px' : '28px',
+      alignItems: 'start',
+    }}>
 
-      {/* Sidebar */}
-      <div style={{ position: 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* ── Sidebar ── */}
+      <div style={{ position: isMobile ? 'static' : 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ marginBottom: '4px' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Editar propuesta</h1>
-          <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>Modifica el contenido y guarda</p>
+          <h1 style={{ fontSize: isMobile ? '20px' : '22px', fontWeight: '400', color: '#0f0f0f', margin: '0 0 4px', letterSpacing: '-0.4px', fontFamily: 'Georgia, serif' }}>
+            Editar propuesta
+          </h1>
+          <p style={{ fontSize: '13px', color: '#aaa', margin: 0, fontFamily: 'sans-serif' }}>
+            Modifica el contenido y guarda
+          </p>
         </div>
 
-        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 4px' }}>Datos</p>
-          <input style={inputStyle} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
-          <input style={inputStyle} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
-          <input style={inputStyle} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+        {/* Metadata */}
+        <div style={{ background: '#fff', border: '1px solid #e8e3dc', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
+          <input style={inp} placeholder="Título de la propuesta" value={title}       onChange={e => setTitle(e.target.value)} />
+          <input style={inp} placeholder="Nombre del cliente"     value={clientName}  onChange={e => setClientName(e.target.value)} />
+          <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
         </div>
 
+        {/* Actions */}
         <button onClick={() => router.push('/dashboard')}
-          style={{ background: 'transparent', color: '#64748B', border: '1px solid #E2E8F0', padding: '11px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer' }}>
+          style={{ background: 'transparent', color: '#888', border: '1px solid #e8e3dc', padding: '11px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontFamily: 'sans-serif' }}>
           Cancelar
         </button>
         <button onClick={handleSave} disabled={!canSave}
-          style={{ background: canSave ? '#4361EE' : '#C7D2FE', color: canSave ? '#fff' : '#818CF8', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default' }}>
+          style={{ background: canSave ? '#0f0f0f' : '#e8e3dc', color: canSave ? '#fff' : '#aaa', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default', fontFamily: 'sans-serif', transition: 'background 0.15s' }}>
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
 
-      {/* Canvas */}
+      {/* ── Canvas ── */}
       <div>
-        <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 16px' }}>Contenido</p>
+        <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 14px', fontFamily: 'sans-serif' }}>
+          Contenido
+        </p>
         <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
       </div>
+
     </div>
   )
 }
