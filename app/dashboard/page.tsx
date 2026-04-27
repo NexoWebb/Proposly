@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
@@ -80,22 +80,24 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<FilterKey>('all')
   const [tab, setTab] = useState<Tab>('proposals')
 
-  const fetchProposals = useCallback(async () => {
-    setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-    const { data, error } = await supabase
-      .from('proposals')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-    if (!error && data) setProposals(data)
-    setLoading(false)
-  }, [router])
-
   useEffect(() => {
-    fetchProposals()
-  }, [fetchProposals])
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      if (!cancelled && !error && data) setProposals(data)
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const sent = proposals.filter(p => p.status === 'sent').length
   const opened = proposals.filter(p => p.status === 'opened').length
@@ -111,7 +113,7 @@ export default function DashboardPage() {
   const filtered = filter === 'all'
     ? proposals
     : filter === 'sent'
-      ? proposals.filter(p => p.status !== 'opened' && p.status !== 'signed')
+      ? proposals.filter(p => p.status === 'sent')
       : proposals.filter(p => p.status === filter)
 
   const barData = (() => {

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabaseAdminAdmin } from '@/lib/supabaseAdminAdmin'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   const { id } = await request.json()
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
-  const { data: proposal } = await supabase
+  const { data: proposal } = await supabaseAdmin
     .from('proposals')
     .select('title, client_name, client_email')
     .eq('id', id)
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase
+  await supabaseAdmin
     .from('proposals')
     .update({ status: 'sent', sent_at: new Date().toISOString() })
     .eq('id', id)

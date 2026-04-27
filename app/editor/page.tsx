@@ -38,7 +38,7 @@ function EditorContent() {
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) { router.push('/login'); return }
       setUserId(user.id)
       const { data } = await supabase
         .from('templates')
@@ -48,7 +48,7 @@ function EditorContent() {
       const tpls = (data ?? []) as UserTemplate[]
       setTemplates(tpls)
       if (tpls.length === 0) {
-        setBlocks([mkBlock('text')])
+        setBlocks([mkBlock('text'), mkBlock('services')])
         setStep('editor')
       }
       setLoadingTemplates(false)
@@ -62,7 +62,7 @@ function EditorContent() {
   }
 
   const startEmpty = () => {
-    setBlocks([mkBlock('text')])
+    setBlocks([mkBlock('text'), mkBlock('services')])
     setStep('editor')
   }
 
