@@ -92,8 +92,8 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
   const card: React.CSSProperties = {
     background: '#ffffff',
     border: '1px solid #e8e3dc',
-    borderRadius: '10px',
-    padding: '18px 20px',
+    borderRadius: '12px',
+    padding: '24px 28px',
   }
 
   const badge: React.CSSProperties = {

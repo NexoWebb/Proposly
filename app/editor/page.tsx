@@ -164,12 +164,11 @@ function EditorContent() {
   /* ── Block editor ────────────────────────── */
   return (
     <div style={{
-      maxWidth: '1280px', margin: '0 auto',
-      padding: isMobile ? '20px 16px 80px' : '48px 48px 80px',
+      maxWidth: '1400px', margin: '0 auto',
+      padding: isMobile ? '20px 16px 80px' : '48px 60px 80px',
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '240px 1fr',
-      gap: isMobile ? '20px' : '28px',
-      alignItems: 'start',
+      gridTemplateColumns: isMobile ? '1fr' : '280px 1fr',
+      gap: isMobile ? '20px' : '40px',
     }}>
 
       {/* ── Sidebar ── */}
