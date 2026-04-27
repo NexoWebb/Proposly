@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { notFound } from 'next/navigation'
 import AcceptButton from '@/components/AcceptButton'
 import { trackProposal } from '@/lib/trackProposal'
@@ -28,7 +29,7 @@ export default async function ProposalPublicPage({
 
   if (error || !proposal) notFound()
 
-  const { data: profile } = await supabase
+  const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('name, logo_url')
     .eq('user_id', proposal.user_id)
