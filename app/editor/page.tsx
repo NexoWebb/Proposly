@@ -204,7 +204,7 @@ function EditorContent() {
       </div>
 
       {/* Canvas principal — ocupa todo el espacio restante */}
-      <div style={{ padding: isMobile ? '20px 16px' : '40px 60px', overflowY: 'auto' }}>
+      <div style={{ padding: isMobile ? '20px 16px' : '40px 80px',maxWidth: '900px', overflowY: 'auto' }}>
         <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 20px', fontFamily: 'sans-serif' }}>
           Contenido
         </p>
