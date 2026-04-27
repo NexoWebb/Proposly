@@ -51,7 +51,7 @@ export default async function ProposalPublicPage({
 
       {/* Cabecera navy */}
       <div className="proposal-header" style={{ background: '#1C2B5E', padding: '64px 24px 48px' }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '780px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>
             {profile?.logo_url
               ? <img src={profile.logo_url} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} />
@@ -74,7 +74,7 @@ export default async function ProposalPublicPage({
         </div>
       </div>
 
-      <div className="proposal-content" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px 24px' }}>
+      <div className="proposal-content" style={{ maxWidth: '780px', margin: '0 auto', padding: '40px 24px' }}>
 
         {blocks.map((block: Block, i: number) => {
           if (block.type === 'header') {
