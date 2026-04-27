@@ -90,7 +90,7 @@ export default function DashboardPage() {
 
   const stats: { label: string; key: FilterKey; value: number; sub?: string }[] = [
     { label: 'Total', key: 'all', value: proposals.length },
-    { label: 'Borradores', key: 'draft', value: proposals.filter(p => p.status === 'draft').length, sub: 'Sin enviar' },
+    { label: 'Borradores', key: 'draft', value: proposals.filter(p => p.status === 'draft').length },
     { label: 'Abiertas', key: 'opened', value: opened, sub: 'Pendientes de firma' },
     { label: 'Firmadas', key: 'signed', value: signed },
   ]
