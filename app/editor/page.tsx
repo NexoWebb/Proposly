@@ -159,35 +159,21 @@ function EditorContent() {
   }
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '260px 1fr',
-      minHeight: 'calc(100vh - 56px)',
-    }}>
-      {/* Sidebar fijo izquierdo */}
-      <div style={{
-        background: '#fff',
-        borderRight: '1px solid #e8e3dc',
-        padding: '24px 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        position: isMobile ? 'static' : 'sticky',
-        top: '56px',
-        height: isMobile ? 'auto' : 'calc(100vh - 56px)',
-        overflowY: 'auto',
-      }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 80px' : '48px 40px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: isMobile ? '24px' : '48px', alignItems: 'start' }}>
+
+      {/* Sidebar */}
+      <div style={{ position: isMobile ? 'static' : 'sticky', top: '80px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <button onClick={() => setStep('template')}
-          style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '13px', cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'sans-serif', marginBottom: '8px' }}>
+          style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '13px', cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'sans-serif', marginBottom: '4px' }}>
           ← Plantillas
         </button>
 
-        <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
-        <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
-        <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
-        <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
-
-        <div style={{ flex: 1 }} />
+        <div style={{ background: '#fff', border: '1px solid #e8e3dc', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
+          <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
+          <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
+          <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+        </div>
 
         <button onClick={() => router.push('/dashboard')}
           style={{ background: 'transparent', color: '#888', border: '1px solid #e8e3dc', padding: '11px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontFamily: 'sans-serif' }}>
@@ -203,13 +189,14 @@ function EditorContent() {
         </button>
       </div>
 
-      {/* Canvas principal — ocupa todo el espacio restante */}
-      <div style={{ padding: isMobile ? '20px 16px' : '40px 80px',maxWidth: '900px', overflowY: 'auto' }}>
+      {/* Canvas */}
+      <div>
         <p style={{ fontSize: '10px', color: '#aaa', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 20px', fontFamily: 'sans-serif' }}>
           Contenido
         </p>
         <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
       </div>
+
     </div>
   )
 }
