@@ -6,6 +6,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: NextRequest) {
   const { id, message } = await request.json()
+  console.log('[send] START id:', id)
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
   const { data: proposal, error: fetchError } = await supabaseAdmin
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
     console.error('[send] Error fetching proposal:', fetchError.message)
     return NextResponse.json({ error: 'Error al obtener la propuesta' }, { status: 500 })
   }
+  console.log('[send] Proposal found:', proposal?.title, '| email:', proposal?.client_email)
   if (!proposal) return NextResponse.json({ error: 'Propuesta no encontrada' }, { status: 404 })
   if (!proposal.client_email) return NextResponse.json({ error: 'El cliente no tiene email configurado' }, { status: 400 })
 
@@ -58,6 +60,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Error al enviar el email: ' + emailError.message }, { status: 500 })
   }
 
+  console.log('[send] Email sent OK, updating status...')
+
   // 3. Email enviado OK → actualizar estado a sent
   const { error: updateError } = await supabaseAdmin
     .from('proposals')
@@ -65,10 +69,10 @@ export async function POST(request: NextRequest) {
     .eq('id', id)
 
   if (updateError) {
-    console.error('[send] Error updating status:', updateError.message)
-    // Email llegó pero no se actualizó el estado → avisamos pero no es error crítico
+    console.error('[send] Error updating status:', updateError.message, updateError.details, updateError.hint)
     return NextResponse.json({ ok: true, statusError: updateError.message })
   }
 
+  console.log('[send] Status updated to sent OK')
   return NextResponse.json({ ok: true })
 }
