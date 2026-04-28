@@ -4,12 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const bg = '#F5F0EB'
-const ink = '#1A1208'
-const mid = '#8C7B6B'
-const border = '#DDD5C8'
-const cream = '#FAF7F3'
-
 type View = 'login' | 'reset' | 'reset-sent'
 
 export default function LoginPage() {
@@ -19,13 +13,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const inp: React.CSSProperties = {
-    width: '100%', background: cream, border: `1px solid ${border}`,
-    borderRadius: '8px', padding: '10px 14px', fontSize: '14px',
-    color: ink, outline: 'none', fontFamily: 'sans-serif',
-    boxSizing: 'border-box', marginBottom: '10px',
-  }
 
   const handleLogin = async () => {
     setLoading(true); setError('')
@@ -51,50 +38,95 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: bg, fontFamily: 'sans-serif' }}>
-      <div style={{ background: cream, padding: '40px', borderRadius: '16px', border: `1px solid ${border}`, width: '100%', maxWidth: '360px' }}>
+  const lineInput: React.CSSProperties = {
+    width: '100%', background: 'transparent',
+    border: 'none', borderBottom: '1px solid rgba(255,255,255,0.3)',
+    padding: '12px 0', fontSize: '15px', color: '#fff',
+    outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
+  }
 
-        <div style={{ marginBottom: '32px' }}>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: '400', color: ink, letterSpacing: '-0.3px' }}>Proposly</span>
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'sans-serif', position: 'relative', overflow: 'hidden',
+      background: 'linear-gradient(135deg, #C4A882 0%, #8C7B6B 35%, #4A3728 70%, #1A1208 100%)',
+    }}>
+      {/* Blur orbs */}
+      <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '500px', height: '500px', borderRadius: '50%', background: 'rgba(196,168,130,0.3)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '-20%', left: '-10%', width: '400px', height: '400px', borderRadius: '50%', background: 'rgba(140,123,107,0.25)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+
+      <div style={{
+        width: '100%', maxWidth: '380px', padding: '48px 40px',
+        background: 'rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: '24px',
+        border: '1px solid rgba(255,255,255,0.15)',
+        position: 'relative', zIndex: 1,
+      }}>
+
+        <div style={{ marginBottom: '40px' }}>
+          <span style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '400', color: '#fff', letterSpacing: '-0.3px' }}>Proposly</span>
         </div>
 
         {error && (
-          <p style={{ fontSize: '13px', color: '#C4624A', background: '#FDF0EB', border: '1px solid #E8C4B0', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#FFCBA4', background: 'rgba(255,150,80,0.15)', border: '1px solid rgba(255,150,80,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '20px' }}>
             {error}
           </p>
         )}
 
         {view === 'login' && (
           <>
-            <input style={inp} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-            <input style={{ ...inp, marginBottom: '8px' }} type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} />
-            <button onClick={() => { setError(''); setView('reset') }}
-              style={{ background: 'none', border: 'none', color: mid, fontSize: '12px', cursor: 'pointer', padding: '0 0 20px', display: 'block' }}>
-              Olvidé mi contraseña
-            </button>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', fontWeight: '400', color: '#fff', margin: '0 0 32px', lineHeight: 1.2, letterSpacing: '-0.5px' }}>
+              Entra en<br />tu cuenta
+            </h2>
+
+            <div style={{ marginBottom: '24px' }}>
+              <input style={lineInput} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <input style={lineInput} type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '32px' }}>
+              <button onClick={() => { setError(''); setView('reset') }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: '12px', cursor: 'pointer', padding: 0 }}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+
             <button onClick={handleLogin} disabled={loading}
-              style={{ width: '100%', background: ink, color: cream, border: 'none', borderRadius: '10px', padding: '11px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginBottom: '8px' }}>
+              style={{ width: '100%', background: '#1A1208', color: '#FAF7F3', border: 'none', borderRadius: '50px', padding: '14px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', marginBottom: '12px', transition: 'opacity 0.15s' }}>
               {loading ? 'Cargando...' : 'Entrar'}
             </button>
             <button onClick={handleRegister} disabled={loading}
-              style={{ width: '100%', background: 'transparent', color: mid, border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '14px', cursor: 'pointer' }}>
+              style={{ width: '100%', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50px', padding: '14px', fontSize: '15px', cursor: 'pointer', transition: 'opacity 0.15s' }}>
               Crear cuenta
             </button>
+
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: '24px' }}>
+              Para agencias y autónomos en España
+            </p>
           </>
         )}
 
         {view === 'reset' && (
           <>
-            <p style={{ fontSize: '14px', color: ink, marginBottom: '8px', fontWeight: '500', fontFamily: 'Georgia, serif' }}>Restablecer contraseña</p>
-            <p style={{ fontSize: '13px', color: mid, marginBottom: '16px' }}>Escribe tu email y te enviaremos un link para crear una nueva contraseña.</p>
-            <input style={{ ...inp, marginBottom: '16px' }} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '400', color: '#fff', margin: '0 0 12px' }}>
+              Restablecer contraseña
+            </h2>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '28px', lineHeight: 1.6 }}>
+              Escribe tu email y te enviaremos un link para crear una nueva contraseña.
+            </p>
+            <div style={{ marginBottom: '28px' }}>
+              <input style={lineInput} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
             <button onClick={handleReset} disabled={loading || !email}
-              style={{ width: '100%', background: ink, color: cream, border: 'none', borderRadius: '10px', padding: '11px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginBottom: '8px' }}>
+              style={{ width: '100%', background: '#1A1208', color: '#FAF7F3', border: 'none', borderRadius: '50px', padding: '14px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', marginBottom: '12px' }}>
               {loading ? 'Enviando...' : 'Enviar link'}
             </button>
             <button onClick={() => { setError(''); setView('login') }}
-              style={{ width: '100%', background: 'transparent', color: mid, border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '14px', cursor: 'pointer' }}>
+              style={{ width: '100%', background: 'transparent', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50px', padding: '14px', fontSize: '15px', cursor: 'pointer' }}>
               Volver
             </button>
           </>
@@ -102,15 +134,13 @@ export default function LoginPage() {
 
         {view === 'reset-sent' && (
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: bg, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '22px' }}>
-              ✉️
-            </div>
-            <p style={{ fontSize: '15px', fontWeight: '500', color: ink, marginBottom: '8px', fontFamily: 'Georgia, serif' }}>Email enviado</p>
-            <p style={{ fontSize: '13px', color: mid, marginBottom: '24px', lineHeight: '1.6' }}>
-              Revisa tu bandeja de entrada en <strong>{email}</strong> y sigue el link para crear una nueva contraseña.
+            <div style={{ fontSize: '40px', marginBottom: '20px' }}>✉️</div>
+            <p style={{ fontSize: '18px', fontWeight: '500', color: '#fff', marginBottom: '12px', fontFamily: 'Georgia, serif' }}>Email enviado</p>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '32px', lineHeight: 1.6 }}>
+              Revisa tu bandeja de entrada en <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{email}</strong> y sigue el link para crear una nueva contraseña.
             </p>
             <button onClick={() => setView('login')}
-              style={{ width: '100%', background: 'transparent', color: mid, border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '14px', cursor: 'pointer' }}>
+              style={{ width: '100%', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50px', padding: '14px', fontSize: '15px', cursor: 'pointer' }}>
               Volver al login
             </button>
           </div>
