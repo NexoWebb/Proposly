@@ -54,6 +54,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<FilterKey>('all')
   const [tab, setTab] = useState<Tab>('proposals')
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'status'>('date')
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
 
   useEffect(() => {
     let cancelled = false
@@ -83,7 +86,20 @@ export default function DashboardPage() {
     { label: 'Firmadas', key: 'signed' as FilterKey, value: signed, color: '#4A9B6F' },
   ]
 
-  const filtered = filter === 'all' ? proposals : proposals.filter(p => p.status === filter)
+  const filtered = (() => {
+    let list = filter === 'all' ? proposals : proposals.filter(p => p.status === filter)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(p => p.title.toLowerCase().includes(q) || p.client_name.toLowerCase().includes(q))
+    }
+    return [...list].sort((a, b) => {
+      const av = sortBy === 'date' ? a.created_at : sortBy === 'amount' ? Number(a.total_amount) : a.status
+      const bv = sortBy === 'date' ? b.created_at : sortBy === 'amount' ? Number(b.total_amount) : b.status
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  })()
 
   const barData = (() => {
     const months: { mes: string; propuestas: number }[] = []
@@ -180,11 +196,22 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', overflow: 'hidden', backdropFilter: 'blur(8px)', boxShadow: '0 1px 4px rgba(74,127,165,0.08)' }}>
-              <div style={{ padding: '16px 24px', borderBottom: `1px solid ${border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ fontSize: '11px', color: mid, margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  {filter === 'all' ? 'Todas las propuestas' : statusLabelPlural[filter] ?? `${statusLabel[filter]}s`}
-                </p>
-                {filter !== 'all' && <button onClick={() => setFilter('all')} style={{ background: 'none', border: 'none', fontSize: '11px', color: accent, cursor: 'pointer', textDecoration: 'underline' }}>Ver todas</button>}
+              <div style={{ padding: '12px 16px', borderBottom: `1px solid ${border}`, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', alignItems: isMobile ? 'stretch' : 'center' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', pointerEvents: 'none', color: mid }}>🔍</span>
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por título o cliente..."
+                    style={{ width: '100%', background: 'rgba(74,127,165,0.05)', border: `1px solid ${border}`, borderRadius: '8px', padding: '7px 10px 7px 28px', fontSize: '13px', color: ink, outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '11px', color: mid }}>Ordenar:</span>
+                  {(['date', 'amount', 'status'] as const).map(s => (
+                    <button key={s} onClick={() => { if (sortBy === s) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortBy(s); setSortDir('desc') } }}
+                      style={{ background: sortBy === s ? accent : 'transparent', border: `1px solid ${sortBy === s ? accent : border}`, borderRadius: '8px', padding: '4px 10px', fontSize: '11px', color: sortBy === s ? '#fff' : mid, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      {s === 'date' ? 'Fecha' : s === 'amount' ? 'Importe' : 'Estado'}{sortBy === s ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+                    </button>
+                  ))}
+                  {filter !== 'all' && <button onClick={() => setFilter('all')} style={{ background: 'none', border: 'none', fontSize: '11px', color: accent, cursor: 'pointer', textDecoration: 'underline' }}>Ver todas</button>}
+                </div>
               </div>
 
               {loading ? (

@@ -43,6 +43,8 @@ function EditorContent() {
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showSendModal, setShowSendModal] = useState(false)
+  const [customMessage, setCustomMessage] = useState('')
   const [tplName, setTplName] = useState('')
   const [tplIcon, setTplIcon] = useState('📄')
   const [tplColor, setTplColor] = useState('#FAF7F3')
@@ -83,9 +85,10 @@ function EditorContent() {
 
   const handleSend = async () => {
     setSending(true)
+    setShowSendModal(false)
     const { data } = await persist()
     if (!data?.id) { setSending(false); return }
-    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: data.id }) })
+    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: data.id, message: customMessage.trim() || undefined }) })
     router.push('/dashboard')
   }
 
@@ -189,6 +192,30 @@ function EditorContent() {
         </div>
       )}
 
+      {showSendModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,42,61,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: '#fff', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', border: `1px solid ${border}`, boxShadow: '0 8px 40px rgba(74,127,165,0.2)' }}>
+            <p style={{ fontSize: '16px', fontWeight: '500', color: ink, margin: '0 0 6px', fontFamily: 'Georgia, serif' }}>Enviar al cliente</p>
+            <p style={{ fontSize: '13px', color: mid, margin: '0 0 18px' }}>Se enviará un email a <strong>{clientEmail}</strong></p>
+            <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px' }}>Mensaje personalizado (opcional)</p>
+            <textarea value={customMessage} onChange={e => setCustomMessage(e.target.value)}
+              placeholder="Hola, te adjunto la propuesta que comentamos..."
+              rows={4}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.9)', border: `1px solid ${border}`, borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: ink, outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box', resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => { setShowSendModal(false); setCustomMessage('') }}
+                style={{ flex: 1, background: 'transparent', border: `1px solid ${border}`, borderRadius: '10px', padding: '10px', fontSize: '13px', color: mid, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={handleSend} disabled={sending}
+                style={{ flex: 1, background: sending ? '#C8E0D4' : '#4A9B6F', color: sending ? '#8FBFAB' : '#fff', border: 'none', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '500', cursor: sending ? 'default' : 'pointer', boxShadow: sending ? 'none' : '0 4px 12px rgba(74,155,111,0.3)' }}>
+                {sending ? 'Enviando...' : 'Enviar ✉️'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 80px' : '48px 40px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: isMobile ? '24px' : '48px', alignItems: 'start' }}>
 
         <div style={{ position: isMobile ? 'static' : 'sticky', top: '80px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -230,7 +257,7 @@ function EditorContent() {
             style={{ background: canSave ? accent : border, color: canSave ? '#fff' : mid, border: 'none', padding: '11px', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default', boxShadow: canSave ? '0 4px 12px rgba(74,127,165,0.3)' : 'none' }}>
             {saving ? 'Guardando...' : 'Guardar borrador'}
           </button>
-          <button onClick={handleSend} disabled={!canSend}
+          <button onClick={() => setShowSendModal(true)} disabled={!canSend}
             style={{ background: canSend ? '#4A9B6F' : '#C8E0D4', color: canSend ? '#fff' : '#8FBFAB', border: 'none', padding: '11px', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default', boxShadow: canSend ? '0 4px 12px rgba(74,155,111,0.3)' : 'none' }}>
             {sending ? 'Enviando...' : 'Enviar al cliente'}
           </button>

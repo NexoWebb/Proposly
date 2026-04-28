@@ -25,6 +25,8 @@ export default function EditorEdit({ id }: { id: string }) {
   const [sending,     setSending]     = useState(false)
   const [loading,     setLoading]     = useState(true)
   const [status,      setStatus]      = useState<string>('draft')
+  const [showSendModal, setShowSendModal] = useState(false)
+  const [customMessage, setCustomMessage] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -57,11 +59,12 @@ export default function EditorEdit({ id }: { id: string }) {
   const handleSend = async () => {
     if (!clientEmail) return
     setSending(true)
+    setShowSendModal(false)
     await supabase.from('proposals').update({
       title, client_name: clientName, client_email: clientEmail,
       blocks, total_amount: computeTotal(blocks),
     }).eq('id', id)
-    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, message: customMessage.trim() || undefined }) })
     router.push('/dashboard')
   }
 
@@ -77,7 +80,31 @@ export default function EditorEdit({ id }: { id: string }) {
   }
 
   return (
-    <div style={{
+    <>
+      {showSendModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,42,61,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '440px', border: '1px solid #e8e3dc', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}>
+            <p style={{ fontSize: '16px', fontWeight: '500', color: '#0f0f0f', margin: '0 0 6px', fontFamily: 'Georgia, serif' }}>Pasar a enviada</p>
+            <p style={{ fontSize: '13px', color: '#888', margin: '0 0 18px', fontFamily: 'sans-serif' }}>Se enviará un email a <strong>{clientEmail}</strong></p>
+            <p style={{ fontSize: '11px', color: '#888', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px', fontFamily: 'sans-serif' }}>Mensaje personalizado (opcional)</p>
+            <textarea value={customMessage} onChange={e => setCustomMessage(e.target.value)}
+              placeholder="Hola, te adjunto la propuesta que comentamos..."
+              rows={4}
+              style={{ width: '100%', background: '#f5f4f0', border: '1px solid #e8e3dc', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: '#0f0f0f', outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box', resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => { setShowSendModal(false); setCustomMessage('') }}
+                style={{ flex: 1, background: 'transparent', border: '1px solid #e8e3dc', borderRadius: '10px', padding: '10px', fontSize: '13px', color: '#888', cursor: 'pointer', fontFamily: 'sans-serif' }}>
+                Cancelar
+              </button>
+              <button onClick={handleSend} disabled={sending}
+                style={{ flex: 1, background: sending ? '#C8E0D4' : '#4A9B6F', color: sending ? '#8FBFAB' : '#fff', border: 'none', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '500', cursor: sending ? 'default' : 'pointer', fontFamily: 'sans-serif' }}>
+                {sending ? 'Enviando...' : 'Enviar ✉️'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{
       maxWidth: '1280px', margin: '0 auto',
       padding: isMobile ? '20px 16px 80px' : '36px 32px 80px',
       display: 'grid',
@@ -115,7 +142,7 @@ export default function EditorEdit({ id }: { id: string }) {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
         {status === 'draft' && (
-          <button onClick={handleSend} disabled={!canSend}
+          <button onClick={() => setShowSendModal(true)} disabled={!canSend}
             style={{ background: canSend ? '#4A9B6F' : '#C8E0D4', color: canSend ? '#fff' : '#8FBFAB', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default', fontFamily: 'sans-serif', transition: 'background 0.15s', boxShadow: canSend ? '0 4px 12px rgba(74,155,111,0.25)' : 'none' }}>
             {sending ? 'Enviando...' : 'Pasar a enviada →'}
           </button>
@@ -131,5 +158,6 @@ export default function EditorEdit({ id }: { id: string }) {
       </div>
 
     </div>
+    </>
   )
 }
