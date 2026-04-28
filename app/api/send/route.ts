@@ -63,16 +63,23 @@ export async function POST(request: NextRequest) {
   console.log('[send] Email sent OK, updating status...')
 
   // 3. Email enviado OK → actualizar estado a sent
-  const { error: updateError } = await supabaseAdmin
+  const { data: updatedProposal, error: updateError } = await supabaseAdmin
     .from('proposals')
     .update({ status: 'sent', sent_at: new Date().toISOString() })
     .eq('id', id)
+    .select()
+    .single()
 
   if (updateError) {
     console.error('[send] Error updating status:', updateError.message, updateError.details, updateError.hint)
     return NextResponse.json({ ok: true, statusError: updateError.message })
   }
 
-  console.log('[send] Status updated to sent OK')
-  return NextResponse.json({ ok: true })
+  if (!updatedProposal) {
+    console.error('[send] Update succeeded but returned no data (0 rows updated). ID:', id)
+    return NextResponse.json({ ok: true, statusError: 'La fila no se actualizó (ID no encontrado o RLS bloqueando)' })
+  }
+
+  console.log('[send] Status updated to sent OK for ID:', updatedProposal.id)
+  return NextResponse.json({ ok: true, updatedStatus: updatedProposal.status })
 }
