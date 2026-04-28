@@ -95,6 +95,9 @@ function EditorContent() {
       alert('Error al enviar: ' + (json.error ?? 'Error desconocido'))
       return
     }
+    if (json.statusError) {
+      alert('Email enviado pero fallo al actualizar estado: ' + json.statusError)
+    }
     router.push('/dashboard')
   }
 
