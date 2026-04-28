@@ -22,7 +22,9 @@ export default function EditorEdit({ id }: { id: string }) {
   const [clientEmail, setClientEmail] = useState('')
   const [blocks,      setBlocks]      = useState<Block[]>([])
   const [saving,      setSaving]      = useState(false)
+  const [sending,     setSending]     = useState(false)
   const [loading,     setLoading]     = useState(true)
+  const [status,      setStatus]      = useState<string>('draft')
 
   useEffect(() => {
     const load = async () => {
@@ -37,6 +39,7 @@ export default function EditorEdit({ id }: { id: string }) {
       setClientName(data.client_name ?? '')
       setClientEmail(data.client_email ?? '')
       setBlocks(normalizeBlocks(data.blocks ?? []))
+      setStatus(data.status ?? 'draft')
       setLoading(false)
     }
     load()
@@ -51,7 +54,19 @@ export default function EditorEdit({ id }: { id: string }) {
     router.push('/dashboard')
   }
 
-  const canSave = !!title && !saving
+  const handleSend = async () => {
+    if (!clientEmail) return
+    setSending(true)
+    await supabase.from('proposals').update({
+      title, client_name: clientName, client_email: clientEmail,
+      blocks, total_amount: computeTotal(blocks),
+    }).eq('id', id)
+    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    router.push('/dashboard')
+  }
+
+  const canSave = !!title && !saving && !sending
+  const canSend = !!title && !!clientEmail && !saving && !sending && status === 'draft'
 
   if (loading) {
     return (
@@ -99,6 +114,12 @@ export default function EditorEdit({ id }: { id: string }) {
           style={{ background: canSave ? '#0f0f0f' : '#e8e3dc', color: canSave ? '#fff' : '#aaa', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default', fontFamily: 'sans-serif', transition: 'background 0.15s' }}>
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
+        {status === 'draft' && (
+          <button onClick={handleSend} disabled={!canSend}
+            style={{ background: canSend ? '#4A9B6F' : '#C8E0D4', color: canSend ? '#fff' : '#8FBFAB', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default', fontFamily: 'sans-serif', transition: 'background 0.15s', boxShadow: canSend ? '0 4px 12px rgba(74,155,111,0.25)' : 'none' }}>
+            {sending ? 'Enviando...' : 'Pasar a enviada →'}
+          </button>
+        )}
       </div>
 
       {/* ── Canvas ── */}

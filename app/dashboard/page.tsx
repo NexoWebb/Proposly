@@ -17,7 +17,7 @@ const accent = '#4A7FA5'
 const accentLight = '#EAF4FB'
 
 type Proposal = {
-  id: string; title: string; client_name: string; status: string
+  id: string; title: string; client_name: string; client_email: string | null; status: string
   total_amount: number; created_at: string; sent_at: string | null; signed_at: string | null
 }
 
@@ -26,6 +26,7 @@ const fmt = (d: string | null) => d ? new Date(d).toLocaleString('es-ES', { day:
 const statusLabel: Record<string, string> = { draft: 'Borrador', sent: 'Enviada', opened: 'Abierta', signed: 'Firmada' }
 const statusColor: Record<string, string> = { draft: '#94A3B8', sent: '#4A7FA5', opened: '#D4854A', signed: '#4A9B6F' }
 const statusBg: Record<string, string> = { draft: '#F1F5F9', sent: '#EAF4FB', opened: '#FEF3E8', signed: '#E8F5EE' }
+const statusLabelPlural: Record<string, string> = { draft: 'Borradores', sent: 'No abiertas', opened: 'Abiertas', signed: 'Firmadas' }
 
 function CopyLinkButton({ id }: { id: string }) {
   const [copied, setCopied] = useState(false)
@@ -76,7 +77,8 @@ export default function DashboardPage() {
 
   const stats = [
     { label: 'Total', key: 'all' as FilterKey, value: proposals.length, color: accent },
-    { label: 'Borradores', key: 'draft' as FilterKey, value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8' },
+    { label: 'Borradores', key: 'draft' as FilterKey, value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8', sub: 'Sin enviar' },
+    { label: 'No abiertas', key: 'sent' as FilterKey, value: sent, color: '#4A7FA5', sub: 'Enviadas sin abrir' },
     { label: 'Abiertas', key: 'opened' as FilterKey, value: opened, color: '#D4854A', sub: 'Pendientes de firma' },
     { label: 'Firmadas', key: 'signed' as FilterKey, value: signed, color: '#4A9B6F' },
   ]
@@ -110,6 +112,17 @@ export default function DashboardPage() {
     if (!window.confirm('¿Seguro que quieres eliminar esta propuesta?')) return
     await supabase.from('proposals').delete().eq('id', id)
     setProposals(prev => prev.filter(p => p.id !== id))
+  }
+
+  const handleMarkAsSent = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    const proposal = proposals.find(p => p.id === id)
+    if (!proposal?.client_email) {
+      alert('Esta propuesta no tiene email de cliente. Ábrela en el editor para añadirlo.')
+      return
+    }
+    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'sent', sent_at: new Date().toISOString() } : p))
   }
 
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
@@ -152,7 +165,7 @@ export default function DashboardPage() {
 
         {tab === 'proposals' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`, gap: '12px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 5}, 1fr)`, gap: '10px', marginBottom: '24px' }}>
               {stats.map(stat => (
                 <div key={stat.key} onClick={() => setFilter(stat.key)}
                   style={{ background: filter === stat.key ? accent : cardBg, border: `1px solid ${filter === stat.key ? accent : border}`, borderRadius: '16px', padding: '20px', cursor: 'pointer', transition: 'all 0.15s', backdropFilter: 'blur(8px)', boxShadow: filter === stat.key ? '0 4px 16px rgba(74,127,165,0.25)' : '0 1px 4px rgba(74,127,165,0.06)' }}>
@@ -169,7 +182,7 @@ export default function DashboardPage() {
             <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', overflow: 'hidden', backdropFilter: 'blur(8px)', boxShadow: '0 1px 4px rgba(74,127,165,0.08)' }}>
               <div style={{ padding: '16px 24px', borderBottom: `1px solid ${border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: '11px', color: mid, margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  {filter === 'all' ? 'Todas las propuestas' : `${statusLabel[filter]}s`}
+                  {filter === 'all' ? 'Todas las propuestas' : statusLabelPlural[filter] ?? `${statusLabel[filter]}s`}
                 </p>
                 {filter !== 'all' && <button onClick={() => setFilter('all')} style={{ background: 'none', border: 'none', fontSize: '11px', color: accent, cursor: 'pointer', textDecoration: 'underline' }}>Ver todas</button>}
               </div>
@@ -178,7 +191,7 @@ export default function DashboardPage() {
                 <div style={{ padding: '48px', textAlign: 'center', color: mid, fontSize: '14px' }}>Cargando...</div>
               ) : filtered.length === 0 ? (
                 <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-                  <p style={{ color: mid, fontSize: '14px', marginBottom: '20px' }}>{filter === 'all' ? 'Todavía no tienes propuestas' : `No hay propuestas ${statusLabel[filter]?.toLowerCase()}s`}</p>
+                  <p style={{ color: mid, fontSize: '14px', marginBottom: '20px' }}>{filter === 'all' ? 'Todavía no tienes propuestas' : `No hay ${statusLabelPlural[filter]?.toLowerCase()}`}</p>
                   {filter === 'all' && <button onClick={() => router.push('/editor')} style={{ background: accent, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer' }}>Crear primera propuesta</button>}
                 </div>
               ) : (
@@ -208,6 +221,12 @@ export default function DashboardPage() {
                       {Number(proposal.total_amount).toLocaleString('es-ES')}€
                     </span>
                     <CopyLinkButton id={proposal.id} />
+                    {proposal.status === 'draft' && (
+                      <button onClick={e => handleMarkAsSent(e, proposal.id)}
+                        style={{ background: 'none', border: '1px solid #4A9B6F', borderRadius: '20px', padding: '4px 12px', fontSize: '11px', color: '#4A9B6F', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        Pasar a enviada
+                      </button>
+                    )}
                     {proposal.status !== 'signed' && (
                       <button onClick={e => handleDelete(e, proposal.id)} style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', color: '#EF4444', cursor: 'pointer', flexShrink: 0 }}>
                         Eliminar
