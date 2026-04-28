@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { Block } from '@/components/BlockEditor'
 
-export default function AcceptButton({ proposalId, signed }: { proposalId: string, signed: boolean }) {
+export default function AcceptButton({ proposalId, signed, finalTotal, finalBlocks }: { proposalId: string, signed: boolean, finalTotal?: number, finalBlocks?: Block[] }) {
   const [step, setStep] = useState<'idle' | 'form' | 'done'>('idle')
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -18,6 +19,8 @@ export default function AcceptButton({ proposalId, signed }: { proposalId: strin
         status: 'signed',
         signed_at: new Date().toISOString(),
         signer_name: name,
+        ...(finalTotal !== undefined ? { total_amount: finalTotal } : {}),
+        ...(finalBlocks !== undefined ? { blocks: finalBlocks } : {}),
       })
       .eq('id', proposalId)
 

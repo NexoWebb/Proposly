@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export type Service = { name: string; price: number }
+export type Service = { name: string; price: number; optional?: boolean; selected?: boolean }
 
 export type Block =
   | { id: string; type: 'header'; content: string }
@@ -19,7 +19,7 @@ export function mkBlock(type: Block['type']): Block {
     case 'text':     return { id, type: 'text', content: '' }
     case 'image':    return { id, type: 'image', url: '', caption: '' }
     case 'separator':return { id, type: 'separator' }
-    case 'services': return { id, type: 'services', content: [{ name: '', price: 0 }] }
+    case 'services': return { id, type: 'services', content: [{ name: '', price: 0, optional: false, selected: true }] }
   }
 }
 
@@ -258,9 +258,9 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
           {/* SERVICES */}
           {block.type === 'services' && (() => {
             const total = block.content.reduce((s, sv) => s + Number(sv.price), 0)
-            const updateSvc = (si: number, field: keyof Service, val: string) => {
+            const updateSvc = (si: number, field: keyof Service, val: string | boolean | number) => {
               const content = block.content.map((s, idx) =>
-                idx === si ? { ...s, [field]: field === 'price' ? Number(val) : val } : s
+                idx === si ? { ...s, [field]: val } : s
               )
               update(i, { ...block, content })
             }
@@ -283,8 +283,12 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                         style={{ ...fieldInput, width: '110px' }}
                         type="number" placeholder="€"
                         value={svc.price || ''}
-                        onChange={e => updateSvc(si, 'price', e.target.value)}
+                        onChange={e => updateSvc(si, 'price', Number(e.target.value))}
                       />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#888', cursor: 'pointer', flexShrink: 0, width: '70px' }}>
+                        <input type="checkbox" checked={svc.optional || false} onChange={e => updateSvc(si, 'optional', e.target.checked)} style={{ cursor: 'pointer' }} />
+                        Opcional
+                      </label>
                       <button
                         onClick={() => update(i, { ...block, content: block.content.filter((_, idx) => idx !== si) })}
                         style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '20px', cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}
@@ -293,7 +297,7 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                   ))}
                 </div>
                 <button
-                  onClick={() => update(i, { ...block, content: [...block.content, { name: '', price: 0 }] })}
+                  onClick={() => update(i, { ...block, content: [...block.content, { name: '', price: 0, optional: false, selected: true }] })}
                   style={{ width: '100%', background: 'transparent', border: '1px dashed #e8e3dc', borderRadius: '6px', padding: '8px', fontSize: '13px', color: '#aaa', cursor: 'pointer', marginBottom: '14px', fontFamily: 'sans-serif' }}
                 >+ Añadir línea</button>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f0ede8', paddingTop: '12px' }}>
