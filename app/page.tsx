@@ -1,194 +1,185 @@
-export default function LandingPage() {
-  const bg = '#F5F0EB'
-  const ink = '#1A1208'
-  const mid = '#8C7B6B'
-  const border = '#DDD5C8'
-  const accent = '#C4A882'
-  const cream = '#FAF7F3'
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import UserLogo from '@/components/UserLogo'
+
+const bg = '#F5F0EB'
+const ink = '#1A1208'
+const mid = '#8C7B6B'
+const border = '#DDD5C8'
+const cream = '#FAF7F3'
+
+const inp: React.CSSProperties = {
+  width: '100%', background: cream, border: `1px solid ${border}`,
+  borderRadius: '8px', padding: '10px 14px', fontSize: '14px',
+  color: ink, outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
+}
+
+export default function SettingsPage() {
+  const router = useRouter()
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const [userId, setUserId] = useState<string | null>(null)
+  const [name, setName] = useState('')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [profileMsg, setProfileMsg] = useState('')
+  const [passwordMsg, setPasswordMsg] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
+  const [deletingTpl, setDeletingTpl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+      setUserId(user.id)
+      const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
+      if (data) { setName(data.name ?? ''); setLogoUrl(data.logo_url ?? null) }
+      const { data: tpls } = await supabase.from('templates').select('id, name').eq('user_id', user.id).order('created_at', { ascending: false })
+      setTemplates(tpls ?? [])
+      setLoading(false)
+    }
+    load()
+  }, [router])
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
+  }
+
+  const handleSaveProfile = async () => {
+    if (!userId) return
+    setSavingProfile(true); setProfileMsg('')
+    let finalLogoUrl = logoUrl
+    if (logoFile) {
+      const ext = logoFile.name.split('.').pop()
+      const path = `${userId}/logo.${ext}`
+      const { error: uploadError } = await supabase.storage.from('logos').upload(path, logoFile, { upsert: true })
+      if (uploadError) { setProfileMsg('Error al subir el logo: ' + uploadError.message); setSavingProfile(false); return }
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path)
+      finalLogoUrl = urlData.publicUrl
+      setLogoUrl(finalLogoUrl)
+    }
+    const { error } = await supabase.from('profiles').upsert({ user_id: userId, name, logo_url: finalLogoUrl }, { onConflict: 'user_id' })
+    setProfileMsg(error ? 'Error al guardar: ' + error.message : '✓ Perfil actualizado')
+    setSavingProfile(false)
+  }
+
+  const handleDeleteTemplate = async (id: string) => {
+    setDeletingTpl(id)
+    await supabase.from('templates').delete().eq('id', id)
+    setTemplates(prev => prev.filter(t => t.id !== id))
+    setDeletingTpl(null)
+  }
+
+  const handleSavePassword = async () => {
+    if (!newPassword || newPassword.length < 6) { setPasswordMsg('La contraseña debe tener al menos 6 caracteres'); return }
+    setSavingPassword(true); setPasswordMsg('')
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setPasswordMsg(error ? 'Error: ' + error.message : '✓ Contraseña actualizada')
+    if (!error) setNewPassword('')
+    setSavingPassword(false)
+  }
+
+  const currentLogo = logoPreview ?? logoUrl
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mid, fontSize: '14px', fontFamily: 'sans-serif' }}>
+      Cargando...
+    </div>
+  )
 
   return (
-    <div style={{ minHeight: '100vh', background: bg, fontFamily: 'sans-serif', color: ink }}>
+    <div style={{ minHeight: '100vh', background: bg, fontFamily: 'sans-serif' }}>
+      <div style={{ background: ink, padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px' }}>
+        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textDecoration: 'none' }}>← Dashboard</a>
+        <div style={{ margin: '0 auto' }}><UserLogo /></div>
+        <div style={{ width: '80px' }} />
+      </div>
 
-      {/* Nav */}
-      <nav style={{ padding: '0 64px', height: '68px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${border}`, background: bg, position: 'sticky', top: 0, zIndex: 10 }}>
-        <span style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: '400', color: ink, letterSpacing: '-0.3px' }}>Proposly</span>
-        <div style={{ display: 'flex', gap: '36px', alignItems: 'center' }}>
-          <a href="#como-funciona" style={{ fontSize: '13px', color: mid, textDecoration: 'none' }}>Cómo funciona</a>
-          <a href="#precios" style={{ fontSize: '13px', color: mid, textDecoration: 'none' }}>Precios</a>
-          <a href="/login" style={{ fontSize: '13px', color: mid, textDecoration: 'none' }}>Acceder</a>
-          <a href="/login" style={{ fontSize: '13px', color: cream, background: ink, padding: '9px 22px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500' }}>
-            Empieza gratis
-          </a>
+      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '48px 24px 80px' }}>
+        <div style={{ marginBottom: '40px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: '400', color: ink, margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Ajustes</h1>
+          <p style={{ fontSize: '13px', color: mid, margin: 0 }}>Gestiona tu perfil y las preferencias de tu cuenta</p>
         </div>
-      </nav>
 
-      {/* Hero */}
-      <section style={{ maxWidth: '860px', margin: '0 auto', padding: '130px 48px 110px', textAlign: 'center' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '4px', textTransform: 'uppercase', color: accent, marginBottom: '36px' }}>
-          Para agencias y autónomos en España
-        </p>
-        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '76px', fontWeight: '400', color: ink, lineHeight: '1.05', letterSpacing: '-2.5px', margin: '0 0 36px' }}>
-          Propuestas que<br />
-          <em style={{ fontStyle: 'italic', color: mid }}>cierran ventas</em>
-        </h1>
-        <p style={{ fontSize: '19px', color: mid, lineHeight: '1.75', maxWidth: '520px', margin: '0 auto 52px' }}>
-          Crea propuestas profesionales en minutos, envíalas como link y recibe la firma de tu cliente online.
-        </p>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
-          <a href="/login" style={{ fontSize: '15px', color: cream, background: ink, padding: '15px 36px', borderRadius: '10px', textDecoration: 'none', fontWeight: '500', letterSpacing: '-0.2px' }}>
-            Empieza gratis →
-          </a>
-          <a href="#como-funciona" style={{ fontSize: '15px', color: mid, padding: '15px 24px', textDecoration: 'none' }}>
-            Ver cómo funciona
-          </a>
-        </div>
-        <p style={{ fontSize: '12px', color: '#B8A898', marginTop: '22px' }}>Sin tarjeta de crédito · Gratis para siempre en el plan básico</p>
-      </section>
-
-      {/* Divisor */}
-      <div style={{ borderTop: `1px solid ${border}`, maxWidth: '860px', margin: '0 auto' }} />
-
-      {/* Tipos de cliente */}
-      <section style={{ maxWidth: '860px', margin: '0 auto', padding: '52px 48px', textAlign: 'center' }}>
-        <p style={{ fontSize: '12px', color: '#B8A898', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '28px' }}>
-          Usado por profesionales de toda España
-        </p>
-        <div style={{ display: 'flex', gap: '40px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {['Agencias de marketing', 'Consultores', 'Fotógrafos', 'Diseñadores web', 'Empresas de reformas'].map(type => (
-            <span key={type} style={{ fontSize: '15px', color: mid, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{type}</span>
-          ))}
-        </div>
-      </section>
-
-      {/* Divisor */}
-      <div style={{ borderTop: `1px solid ${border}`, maxWidth: '860px', margin: '0 auto' }} />
-
-      {/* Cómo funciona */}
-      <section id="como-funciona" style={{ maxWidth: '860px', margin: '0 auto', padding: '110px 48px' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '4px', textTransform: 'uppercase', color: accent, marginBottom: '20px' }}>El proceso</p>
-        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '52px', fontWeight: '400', color: ink, margin: '0 0 80px', letterSpacing: '-1.5px', lineHeight: 1.1 }}>
-          Tres pasos,<br />ningún papel
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '56px' }}>
-          {[
-            { num: '01', title: 'Crea tu propuesta', desc: 'Elige una plantilla o empieza desde cero. Añade servicios, precios y tu branding en minutos.' },
-            { num: '02', title: 'Envíala como link', desc: 'Tu cliente recibe un link, no un PDF. Lo abre desde cualquier dispositivo sin descargar nada.' },
-            { num: '03', title: 'Recibe la firma', desc: 'El cliente acepta con un clic. Recibes un email al instante y la propuesta queda firmada.' },
-          ].map(step => (
-            <div key={step.num}>
-              <p style={{ fontFamily: 'Georgia, serif', fontSize: '52px', color: border, fontWeight: '400', margin: '0 0 28px', lineHeight: 1 }}>{step.num}</p>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: '400', color: ink, margin: '0 0 14px' }}>{step.title}</h3>
-              <p style={{ fontSize: '14px', color: mid, lineHeight: '1.75', margin: 0 }}>{step.desc}</p>
+        {/* Perfil */}
+        <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: '12px', padding: '28px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Perfil</p>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ fontSize: '13px', color: mid, display: 'block', marginBottom: '6px' }}>Nombre</label>
+            <input style={inp} type="text" placeholder="Tu nombre o el de tu agencia" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ fontSize: '13px', color: mid, display: 'block', marginBottom: '6px' }}>Logo</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div onClick={() => fileRef.current?.click()}
+                style={{ width: '72px', height: '72px', borderRadius: '10px', border: `1px dashed ${border}`, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', flexShrink: 0 }}>
+                {currentLogo
+                  ? <img src={currentLogo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  : <span style={{ fontSize: '22px' }}>🖼️</span>
+                }
+              </div>
+              <div>
+                <button onClick={() => fileRef.current?.click()}
+                  style={{ background: 'transparent', border: `1px solid ${border}`, borderRadius: '8px', padding: '8px 14px', fontSize: '13px', color: mid, cursor: 'pointer', display: 'block', marginBottom: '4px' }}>
+                  {currentLogo ? 'Cambiar logo' : 'Subir logo'}
+                </button>
+                <span style={{ fontSize: '11px', color: '#B8A898' }}>PNG, JPG o SVG. Aparece en las propuestas.</span>
+              </div>
             </div>
-          ))}
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} style={{ display: 'none' }} />
+          </div>
+          {profileMsg && <p style={{ fontSize: '13px', color: profileMsg.startsWith('✓') ? '#6B8F5E' : '#C4624A', marginBottom: '12px' }}>{profileMsg}</p>}
+          <button onClick={handleSaveProfile} disabled={savingProfile}
+            style={{ background: savingProfile ? border : ink, color: savingProfile ? mid : cream, border: 'none', borderRadius: '10px', padding: '11px 24px', fontSize: '14px', fontWeight: '500', cursor: savingProfile ? 'default' : 'pointer' }}>
+            {savingProfile ? 'Guardando...' : 'Guardar perfil'}
+          </button>
         </div>
-      </section>
 
-      {/* Divisor */}
-      <div style={{ borderTop: `1px solid ${border}`, maxWidth: '860px', margin: '0 auto' }} />
-
-      {/* Features */}
-      <section style={{ maxWidth: '860px', margin: '0 auto', padding: '110px 48px' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '4px', textTransform: 'uppercase', color: accent, marginBottom: '20px' }}>Por qué Proposly</p>
-        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '52px', fontWeight: '400', color: ink, margin: '0 0 80px', letterSpacing: '-1.5px', lineHeight: 1.1 }}>
-          Todo lo que necesitas,<br />nada de lo que no
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '52px 80px' }}>
-          {[
-            { title: 'Sabe cuándo lo abren', desc: 'Recibes una notificación en el momento en que tu cliente abre la propuesta. El momento perfecto para llamar.' },
-            { title: 'Firma en un clic', desc: 'Sin imprimir, sin escanear, sin reenviar. Tu cliente acepta directamente desde el navegador.' },
-            { title: 'Tu marca, no la nuestra', desc: 'Sube tu logo y personaliza cada propuesta con tus colores. El cliente ve tu agencia, no Proposly.' },
-            { title: 'Plantillas propias', desc: 'Guarda tus servicios habituales como plantilla y crea nuevas propuestas en segundos.' },
-            { title: 'Estadísticas reales', desc: 'Tasa de apertura, tasa de firma, importe cerrado. Sabe exactamente cómo va tu negocio.' },
-            { title: 'En español, para España', desc: 'Precios en euros, soporte en español y pensado para cómo trabajan las agencias españolas.' },
-          ].map(f => (
-            <div key={f.title} style={{ borderTop: `1px solid ${border}`, paddingTop: '28px' }}>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '19px', fontWeight: '400', color: ink, margin: '0 0 12px' }}>{f.title}</h3>
-              <p style={{ fontSize: '14px', color: mid, lineHeight: '1.75', margin: 0 }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Divisor */}
-      <div style={{ borderTop: `1px solid ${border}`, maxWidth: '860px', margin: '0 auto' }} />
-
-      {/* Precios */}
-      <section id="precios" style={{ maxWidth: '860px', margin: '0 auto', padding: '110px 48px' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '4px', textTransform: 'uppercase', color: accent, marginBottom: '20px' }}>Precios</p>
-        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '52px', fontWeight: '400', color: ink, margin: '0 0 16px', letterSpacing: '-1.5px' }}>
-          Simple y transparente
-        </h2>
-        <p style={{ fontSize: '16px', color: mid, margin: '0 0 64px' }}>Sin sorpresas. Cambia de plan cuando quieras.</p>
-
-       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: '20px', padding: '44px', display: 'flex', flexDirection: 'column' }}>
-            <p style={{ fontSize: '11px', color: mid, margin: '0 0 28px', letterSpacing: '2px', textTransform: 'uppercase' }}>Gratis</p>
-            <p style={{ fontFamily: 'Georgia, serif', fontSize: '56px', fontWeight: '400', color: ink, margin: '0 0 6px', letterSpacing: '-2px' }}>0€</p>
-            <p style={{ fontSize: '13px', color: '#B8A898', margin: '0 0 36px' }}>para siempre</p>
-            <div style={{ borderTop: `1px solid ${border}`, paddingTop: '28px', display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '36px', flex: 1 }}>
-              {['3 propuestas al mes', 'Link público único', 'Firma del cliente', 'Notificación de apertura'].map(f => (
-                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: accent, fontSize: '16px', lineHeight: 1 }}>—</span>
-                  <span style={{ fontSize: '14px', color: mid }}>{f}</span>
+        {/* Plantillas */}
+        <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: '12px', padding: '28px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Mis plantillas</p>
+          {templates.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#B8A898', margin: 0 }}>Aún no tienes plantillas guardadas.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {templates.map(tpl => (
+                <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: bg, borderRadius: '8px', border: `1px solid ${border}` }}>
+                  <span style={{ fontSize: '14px', color: ink }}>{tpl.name}</span>
+                  <button onClick={() => handleDeleteTemplate(tpl.id)} disabled={deletingTpl === tpl.id}
+                    style={{ background: 'transparent', border: 'none', color: '#C4624A', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px' }}>
+                    {deletingTpl === tpl.id ? '...' : 'Eliminar'}
+                  </button>
                 </div>
               ))}
             </div>
-            <a href="/login" style={{ display: 'block', textAlign: 'center', padding: '13px', border: `1px solid ${border}`, borderRadius: '10px', fontSize: '14px', color: mid, textDecoration: 'none', background: bg }}>
-              Empezar gratis
-            </a>
-          </div>
-
-          <div style={{ background: ink, borderRadius: '20px', padding: '44px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ position: 'absolute', top: '22px', right: '22px', background: accent, color: ink, fontSize: '10px', fontWeight: '600', padding: '4px 12px', borderRadius: '20px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-              Más popular
-            </div>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '0 0 28px', letterSpacing: '2px', textTransform: 'uppercase' }}>Pro</p>
-            <p style={{ fontFamily: 'Georgia, serif', fontSize: '56px', fontWeight: '400', color: '#FAF7F3', margin: '0 0 6px', letterSpacing: '-2px' }}>19€</p>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: '0 0 36px' }}>al mes</p>
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '28px', display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '36px', flex: 1 }}>
-              {['Propuestas ilimitadas', 'Tu logo en cada propuesta', 'Plantillas personalizadas', 'Estadísticas avanzadas', 'Recordatorios automáticos', 'Soporte prioritario'].map(f => (
-                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: accent, fontSize: '16px', lineHeight: 1 }}>—</span>
-                  <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.65)' }}>{f}</span>
-                </div>
-              ))}
-            </div>
-            <a href="/login" style={{ display: 'block', textAlign: 'center', padding: '13px', background: cream, borderRadius: '10px', fontSize: '14px', color: ink, textDecoration: 'none', fontWeight: '500' }}>
-              Empezar con Pro
-            </a>
-          </div>
+          )}
         </div>
-      </section>
 
-      {/* CTA final */}
-      <section style={{ background: ink, padding: '110px 48px', textAlign: 'center' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '4px', textTransform: 'uppercase', color: accent, marginBottom: '32px' }}>
-          Empieza hoy
-        </p>
-        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '64px', fontWeight: '400', color: cream, margin: '0 0 28px', letterSpacing: '-2px', lineHeight: 1.05 }}>
-          Tu próxima propuesta<br />
-          <em style={{ color: 'rgba(250,247,243,0.35)', fontStyle: 'italic' }}>en cinco minutos</em>
-        </h2>
-        <p style={{ fontSize: '16px', color: 'rgba(250,247,243,0.45)', margin: '0 0 44px' }}>
-          Sin tarjeta de crédito. Cancela cuando quieras.
-        </p>
-        <a href="/login" style={{ fontSize: '15px', color: ink, background: cream, padding: '15px 40px', borderRadius: '10px', textDecoration: 'none', fontWeight: '500' }}>
-          Crear cuenta gratis →
-        </a>
-      </section>
-
-      {/* Footer */}
-      <footer style={{ borderTop: `1px solid ${border}`, padding: '36px 64px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: bg }}>
-        <span style={{ fontFamily: 'Georgia, serif', fontSize: '17px', color: ink }}>Proposly</span>
-        <div style={{ display: 'flex', gap: '36px' }}>
-          <a href="#como-funciona" style={{ fontSize: '13px', color: mid, textDecoration: 'none' }}>Cómo funciona</a>
-          <a href="#precios" style={{ fontSize: '13px', color: mid, textDecoration: 'none' }}>Precios</a>
-          <a href="/login" style={{ fontSize: '13px', color: mid, textDecoration: 'none' }}>Acceder</a>
+        {/* Contraseña */}
+        <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: '12px', padding: '28px' }}>
+          <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Seguridad</p>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ fontSize: '13px', color: mid, display: 'block', marginBottom: '6px' }}>Nueva contraseña</label>
+            <input style={inp} type="password" placeholder="Mínimo 6 caracteres" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+          </div>
+          {passwordMsg && <p style={{ fontSize: '13px', color: passwordMsg.startsWith('✓') ? '#6B8F5E' : '#C4624A', marginBottom: '12px' }}>{passwordMsg}</p>}
+          <button onClick={handleSavePassword} disabled={savingPassword}
+            style={{ background: savingPassword ? border : ink, color: savingPassword ? mid : cream, border: 'none', borderRadius: '10px', padding: '11px 24px', fontSize: '14px', fontWeight: '500', cursor: savingPassword ? 'default' : 'pointer' }}>
+            {savingPassword ? 'Guardando...' : 'Cambiar contraseña'}
+          </button>
         </div>
-        <p style={{ fontSize: '12px', color: '#B8A898', margin: 0 }}>© 2025 Proposly</p>
-      </footer>
-
+      </div>
     </div>
   )
 }

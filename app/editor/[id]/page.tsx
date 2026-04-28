@@ -8,12 +8,9 @@ export default async function EditProposalPage({
 }) {
   const { id } = await params
   return (
-    <div style={{ minHeight: '100vh', background: '#EEF2FF', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: '#1C2B5E', padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0 }}>
-        <a
-          href="/dashboard"
-          style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
+    <div style={{ minHeight: '100vh', background: '#F5F0EB', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: '#1A1208', padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0 }}>
+        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textDecoration: 'none' }}>
           ← Dashboard
         </a>
         <div style={{ margin: '0 auto' }}>
