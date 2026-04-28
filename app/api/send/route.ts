@@ -6,7 +6,6 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: NextRequest) {
   const { id, message } = await request.json()
-  console.log('[send] START id:', id)
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
   const { data: proposal, error: fetchError } = await supabaseAdmin
@@ -16,10 +15,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (fetchError) {
-    console.error('[send] Error fetching proposal:', fetchError.message)
     return NextResponse.json({ error: 'Error al obtener la propuesta' }, { status: 500 })
   }
-  console.log('[send] Proposal found:', proposal?.title, '| email:', proposal?.client_email)
   if (!proposal) return NextResponse.json({ error: 'Propuesta no encontrada' }, { status: 404 })
   if (!proposal.client_email) return NextResponse.json({ error: 'El cliente no tiene email configurado' }, { status: 400 })
 
@@ -56,11 +53,8 @@ export async function POST(request: NextRequest) {
 
   // 2. Si Resend falla, devolver error sin cambiar el estado
   if (emailError) {
-    console.error('[send] Resend error:', emailError.message)
     return NextResponse.json({ error: 'Error al enviar el email: ' + emailError.message }, { status: 500 })
   }
-
-  console.log('[send] Email sent OK, updating status...')
 
   // 3. Email enviado OK → actualizar estado a sent
   const { data: updatedProposal, error: updateError } = await supabaseAdmin
@@ -71,15 +65,12 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (updateError) {
-    console.error('[send] Error updating status:', updateError.message, updateError.details, updateError.hint)
     return NextResponse.json({ ok: true, statusError: updateError.message })
   }
 
   if (!updatedProposal) {
-    console.error('[send] Update succeeded but returned no data (0 rows updated). ID:', id)
     return NextResponse.json({ ok: true, statusError: 'La fila no se actualizó (ID no encontrado o RLS bloqueando)' })
   }
 
-  console.log('[send] Status updated to sent OK for ID:', updatedProposal.id)
   return NextResponse.json({ ok: true, updatedStatus: updatedProposal.status })
 }

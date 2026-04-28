@@ -236,9 +236,10 @@ export default function DashboardPage() {
                       <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{proposal.client_name}</p>
                     </div>
                     {!isMobile && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '120px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '130px' }}>
                         <span style={{ fontSize: '11px', color: '#94A3B8' }}>Creada {fmt(proposal.created_at)}</span>
-                        {fmt(proposal.signed_at) && <span style={{ fontSize: '11px', color: '#4A9B6F' }}>Firmada {fmt(proposal.signed_at)}</span>}
+                        {proposal.status !== 'draft' && proposal.sent_at && <span style={{ fontSize: '11px', color: '#4A7FA5' }}>Enviada {fmt(proposal.sent_at)}</span>}
+                        {proposal.signed_at && <span style={{ fontSize: '11px', color: '#4A9B6F' }}>Firmada {fmt(proposal.signed_at)}</span>}
                       </div>
                     )}
                     <span style={{ fontSize: '11px', color: statusColor[proposal.status], background: statusBg[proposal.status], padding: '3px 10px', borderRadius: '20px', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
