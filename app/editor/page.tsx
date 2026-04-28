@@ -7,20 +7,22 @@ import UserLogo from '@/components/UserLogo'
 import { useIsMobile } from '@/lib/useIsMobile'
 import BlockEditor, { Block, computeTotal, mkBlock } from '@/components/BlockEditor'
 
-const bg = '#F5F0EB'
-const ink = '#1A1208'
-const mid = '#8C7B6B'
-const border = '#DDD5C8'
-const cream = '#FAF7F3'
+const pageBg = '#D6E8F5'
+const topbar = '#4A7FA5'
+const ink = '#0F2A3D'
+const mid = '#5A7A8F'
+const border = '#B8D4E8'
+const cardBg = 'rgba(255,255,255,0.82)'
+const accent = '#4A7FA5'
 
 type Step = 'picker' | 'editor'
 type UserTemplate = { id: string; name: string; blocks: Block[]; icon: string; color: string }
 
 const ICONS = ['📄','📝','💼','📢','📷','🖥️','🔨','⚡','🎯','🌟','💡','🏆']
-const COLORS = ['#FAF7F3','#F5F0EB','#FFF7ED','#F0FDF4','#FDF2F8','#EFF6FF','#FAFAF9','#FEF9C3']
+const COLORS = ['#FAF7F3','#F5F0EB','#EAF4FB','#F0FDF4','#FDF2F8','#EFF6FF','#FAFAF9','#FEF9C3']
 
 const inp: React.CSSProperties = {
-  width: '100%', background: cream, border: `1px solid ${border}`,
+  width: '100%', background: 'rgba(255,255,255,0.9)', border: `1px solid ${border}`,
   borderRadius: '8px', padding: '10px 14px', fontSize: '14px',
   color: ink, outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
 }
@@ -42,7 +44,7 @@ function EditorContent() {
   const [showModal, setShowModal] = useState(false)
   const [tplName, setTplName] = useState('')
   const [tplIcon, setTplIcon] = useState('📄')
-  const [tplColor, setTplColor] = useState(cream)
+  const [tplColor, setTplColor] = useState('#FAF7F3')
   const [savingTpl, setSavingTpl] = useState(false)
 
   useEffect(() => {
@@ -51,7 +53,7 @@ function EditorContent() {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
       const { data } = await supabase.from('templates').select('id, name, blocks, icon, color').eq('user_id', user.id).order('created_at', { ascending: false })
-      const tpls = (data ?? []).map(t => ({ ...t, icon: t.icon ?? '📄', color: t.color ?? cream })) as UserTemplate[]
+      const tpls = (data ?? []).map(t => ({ ...t, icon: t.icon ?? '📄', color: t.color ?? '#FAF7F3' })) as UserTemplate[]
       setTemplates(tpls)
       if (tpls.length === 0) { setBlocks([mkBlock('text'), mkBlock('services')]); setStep('editor') }
       setLoadingTemplates(false)
@@ -81,8 +83,8 @@ function EditorContent() {
     if (!tplName.trim() || !userId) return
     setSavingTpl(true)
     const { data } = await supabase.from('templates').insert({ user_id: userId, name: tplName.trim(), blocks, icon: tplIcon, color: tplColor }).select('id, name, blocks, icon, color').single()
-    if (data) setTemplates(prev => [{ ...data, icon: data.icon ?? '📄', color: data.color ?? cream }, ...prev])
-    setTplName(''); setTplIcon('📄'); setTplColor(cream); setShowModal(false); setSavingTpl(false)
+    if (data) setTemplates(prev => [{ ...data, icon: data.icon ?? '📄', color: data.color ?? '#FAF7F3' }, ...prev])
+    setTplName(''); setTplIcon('📄'); setTplColor('#FAF7F3'); setShowModal(false); setSavingTpl(false)
   }
 
   const canSave = !!title && !saving && !sending
@@ -93,25 +95,25 @@ function EditorContent() {
   )
 
   if (step === 'picker') return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '24px 16px 60px' : '48px 60px 80px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '24px 16px 60px' : '48px 60px 80px' }}>
       <div style={{ marginBottom: '40px' }}>
         <h1 style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: '400', color: ink, margin: '0 0 8px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Mis plantillas</h1>
         <p style={{ fontSize: '14px', color: mid, margin: 0 }}>Elige una plantilla guardada o empieza desde cero</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`, gap: '12px', marginBottom: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`, gap: '16px', marginBottom: '16px' }}>
         {templates.map(tpl => (
           <button key={tpl.id} onClick={() => startWithTemplate(tpl)}
-            style={{ background: tpl.color, border: `1px solid ${border}`, borderRadius: '12px', padding: '20px', textAlign: 'left', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }}
-            onMouseEnter={e => { const b = e.currentTarget; b.style.borderColor = ink; b.style.boxShadow = '0 0 0 3px rgba(26,18,8,0.06)' }}
-            onMouseLeave={e => { const b = e.currentTarget; b.style.borderColor = border; b.style.boxShadow = 'none' }}>
-            <div style={{ fontSize: '28px', marginBottom: '12px' }}>{tpl.icon}</div>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: ink, margin: '0 0 4px', fontFamily: 'sans-serif' }}>{tpl.name}</p>
+            style={{ background: tpl.color, border: `1px solid ${border}`, borderRadius: '16px', padding: '24px 20px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s', boxShadow: '0 1px 4px rgba(74,127,165,0.08)' }}
+            onMouseEnter={e => { const b = e.currentTarget; b.style.borderColor = accent; b.style.boxShadow = '0 4px 16px rgba(74,127,165,0.2)' }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.borderColor = border; b.style.boxShadow = '0 1px 4px rgba(74,127,165,0.08)' }}>
+            <div style={{ fontSize: '32px', marginBottom: '14px' }}>{tpl.icon}</div>
+            <p style={{ fontSize: '14px', fontWeight: '500', color: ink, margin: '0 0 4px' }}>{tpl.name}</p>
             <p style={{ fontSize: '11px', color: mid, margin: 0 }}>{tpl.blocks.length} bloques</p>
           </button>
         ))}
       </div>
       <button onClick={startEmpty}
-        style={{ width: '100%', background: 'transparent', border: `1px dashed ${border}`, borderRadius: '12px', padding: '18px', fontSize: '14px', color: mid, cursor: 'pointer' }}>
+        style={{ width: '100%', background: 'rgba(255,255,255,0.5)', border: `1px dashed ${border}`, borderRadius: '16px', padding: '20px', fontSize: '14px', color: mid, cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
         Empezar desde cero →
       </button>
     </div>
@@ -120,15 +122,15 @@ function EditorContent() {
   return (
     <>
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,8,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ background: cream, borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '420px', border: `1px solid ${border}` }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,42,61,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: '#fff', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, boxShadow: '0 8px 40px rgba(74,127,165,0.2)' }}>
             <p style={{ fontSize: '16px', fontWeight: '500', color: ink, margin: '0 0 20px', fontFamily: 'Georgia, serif' }}>Guardar como plantilla</p>
             <input style={{ ...inp, marginBottom: '16px' }} placeholder="Nombre de la plantilla" value={tplName} onChange={e => setTplName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()} autoFocus />
             <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>Icono</p>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
               {ICONS.map(icon => (
                 <button key={icon} onClick={() => setTplIcon(icon)}
-                  style={{ width: '36px', height: '36px', borderRadius: '8px', border: tplIcon === icon ? `2px solid ${ink}` : `1px solid ${border}`, background: tplIcon === icon ? bg : 'transparent', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  style={{ width: '36px', height: '36px', borderRadius: '8px', border: tplIcon === icon ? `2px solid ${accent}` : `1px solid ${border}`, background: tplIcon === icon ? '#EAF4FB' : 'transparent', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {icon}
                 </button>
               ))}
@@ -137,7 +139,7 @@ function EditorContent() {
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
               {COLORS.map(color => (
                 <button key={color} onClick={() => setTplColor(color)}
-                  style={{ width: '28px', height: '28px', borderRadius: '50%', background: color, border: tplColor === color ? `2px solid ${ink}` : `1px solid ${border}`, cursor: 'pointer' }} />
+                  style={{ width: '28px', height: '28px', borderRadius: '50%', background: color, border: tplColor === color ? `2px solid ${accent}` : `1px solid ${border}`, cursor: 'pointer' }} />
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -146,7 +148,7 @@ function EditorContent() {
                 Cancelar
               </button>
               <button onClick={handleSaveTemplate} disabled={!tplName.trim() || savingTpl}
-                style={{ flex: 1, background: tplName.trim() && !savingTpl ? ink : border, color: tplName.trim() && !savingTpl ? cream : mid, border: 'none', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '500', cursor: tplName.trim() && !savingTpl ? 'pointer' : 'default' }}>
+                style={{ flex: 1, background: tplName.trim() && !savingTpl ? accent : border, color: tplName.trim() && !savingTpl ? '#fff' : mid, border: 'none', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '500', cursor: tplName.trim() && !savingTpl ? 'pointer' : 'default' }}>
                 {savingTpl ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
@@ -162,24 +164,24 @@ function EditorContent() {
               ← Plantillas
             </button>
           )}
-          <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px', backdropFilter: 'blur(8px)' }}>
             <p style={{ fontSize: '10px', color: mid, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px' }}>Datos</p>
             <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
             <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
             <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
           </div>
-          <button onClick={() => setShowModal(true)} style={{ background: 'transparent', border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer' }}>
+          <button onClick={() => setShowModal(true)} style={{ background: 'rgba(255,255,255,0.6)', border: `1px solid ${border}`, borderRadius: '20px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
             Guardar como plantilla
           </button>
-          <button onClick={() => router.push('/dashboard')} style={{ background: 'transparent', color: mid, border: `1px solid ${border}`, padding: '11px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer' }}>
+          <button onClick={() => router.push('/dashboard')} style={{ background: 'transparent', color: mid, border: `1px solid ${border}`, padding: '11px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer' }}>
             Cancelar
           </button>
           <button onClick={handleSave} disabled={!canSave}
-            style={{ background: canSave ? ink : border, color: canSave ? cream : mid, border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default' }}>
+            style={{ background: canSave ? accent : border, color: canSave ? '#fff' : mid, border: 'none', padding: '11px', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: canSave ? 'pointer' : 'default', boxShadow: canSave ? '0 4px 12px rgba(74,127,165,0.3)' : 'none' }}>
             {saving ? 'Guardando...' : 'Guardar borrador'}
           </button>
           <button onClick={handleSend} disabled={!canSend}
-            style={{ background: canSend ? '#5C7A52' : '#C8D9C4', color: canSend ? '#fff' : '#8FAD88', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default' }}>
+            style={{ background: canSend ? '#4A9B6F' : '#C8E0D4', color: canSend ? '#fff' : '#8FBFAB', border: 'none', padding: '11px', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: canSend ? 'pointer' : 'default', boxShadow: canSend ? '0 4px 12px rgba(74,155,111,0.3)' : 'none' }}>
             {sending ? 'Enviando...' : 'Enviar al cliente'}
           </button>
         </div>
@@ -196,9 +198,9 @@ function EditorContent() {
 
 export default function EditorPage() {
   return (
-    <div style={{ minHeight: '100vh', background: bg, fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: ink, padding: '0 24px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0 }}>
-        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textDecoration: 'none' }}>← Dashboard</a>
+    <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: topbar, padding: '0 24px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0, boxShadow: '0 2px 16px rgba(74,127,165,0.2)' }}>
+        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', textDecoration: 'none' }}>← Dashboard</a>
         <div style={{ margin: '0 auto' }}><UserLogo /></div>
         <div style={{ width: '80px' }} />
       </div>
