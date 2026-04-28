@@ -8,19 +8,24 @@ export async function POST(request: NextRequest) {
   const { id, message } = await request.json()
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
-  const { data: proposal } = await supabaseAdmin
+  const { data: proposal, error: fetchError } = await supabaseAdmin
     .from('proposals')
     .select('title, client_name, client_email')
     .eq('id', id)
     .single()
 
+  if (fetchError) {
+    console.error('[send] Error fetching proposal:', fetchError.message)
+    return NextResponse.json({ error: 'Error al obtener la propuesta' }, { status: 500 })
+  }
   if (!proposal) return NextResponse.json({ error: 'Propuesta no encontrada' }, { status: 404 })
-  if (!proposal.client_email) return NextResponse.json({ error: 'El cliente no tiene email' }, { status: 400 })
+  if (!proposal.client_email) return NextResponse.json({ error: 'El cliente no tiene email configurado' }, { status: 400 })
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://proposly-kappa.vercel.app'
   const proposalUrl = `${appUrl}/p/${id}`
 
-  const { error } = await resend.emails.send({
+  // 1. Intentar enviar el email
+  const { error: emailError } = await resend.emails.send({
     from: 'Proposly <onboarding@resend.dev>',
     to: proposal.client_email,
     subject: `${proposal.title} — tu propuesta está lista`,
@@ -47,12 +52,23 @@ export async function POST(request: NextRequest) {
     `,
   })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // 2. Si Resend falla, devolver error sin cambiar el estado
+  if (emailError) {
+    console.error('[send] Resend error:', emailError.message)
+    return NextResponse.json({ error: 'Error al enviar el email: ' + emailError.message }, { status: 500 })
+  }
 
-  await supabaseAdmin
+  // 3. Email enviado OK → actualizar estado a sent
+  const { error: updateError } = await supabaseAdmin
     .from('proposals')
     .update({ status: 'sent', sent_at: new Date().toISOString() })
     .eq('id', id)
+
+  if (updateError) {
+    console.error('[send] Error updating status:', updateError.message)
+    // Email llegó pero no se actualizó el estado → avisamos pero no es error crítico
+    return NextResponse.json({ ok: true, statusError: updateError.message })
+  }
 
   return NextResponse.json({ ok: true })
 }

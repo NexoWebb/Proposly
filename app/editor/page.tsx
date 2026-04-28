@@ -88,7 +88,13 @@ function EditorContent() {
     setShowSendModal(false)
     const { data } = await persist()
     if (!data?.id) { setSending(false); return }
-    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: data.id, message: customMessage.trim() || undefined }) })
+    const res = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: data.id, message: customMessage.trim() || undefined }) })
+    const json = await res.json()
+    if (!res.ok) {
+      setSending(false)
+      alert('Error al enviar: ' + (json.error ?? 'Error desconocido'))
+      return
+    }
     router.push('/dashboard')
   }
 
