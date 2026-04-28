@@ -35,6 +35,7 @@ function EditorContent() {
   const [userId, setUserId] = useState<string | null>(null)
   const [templates, setTemplates] = useState<UserTemplate[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
+  const [activeTpl, setActiveTpl] = useState<UserTemplate | null>(null)
   const [title, setTitle] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
@@ -61,8 +62,17 @@ function EditorContent() {
     init()
   }, [])
 
-  const startWithTemplate = (tpl: UserTemplate) => { setBlocks(tpl.blocks.map(b => ({ ...b, id: crypto.randomUUID() }))); setStep('editor') }
-  const startEmpty = () => { setBlocks([mkBlock('text'), mkBlock('services')]); setStep('editor') }
+  const startWithTemplate = (tpl: UserTemplate) => {
+    setActiveTpl(tpl)
+    setBlocks(tpl.blocks.map(b => ({ ...b, id: crypto.randomUUID() })))
+    setStep('editor')
+  }
+
+  const startEmpty = () => {
+    setActiveTpl(null)
+    setBlocks([mkBlock('text'), mkBlock('services')])
+    setStep('editor')
+  }
 
   const persist = async () => {
     const uid = userId ?? (await supabase.auth.getUser()).data.user?.id
@@ -79,12 +89,35 @@ function EditorContent() {
     router.push('/dashboard')
   }
 
+  // Guardar nueva plantilla
   const handleSaveTemplate = async () => {
     if (!tplName.trim() || !userId) return
     setSavingTpl(true)
     const { data } = await supabase.from('templates').insert({ user_id: userId, name: tplName.trim(), blocks, icon: tplIcon, color: tplColor }).select('id, name, blocks, icon, color').single()
     if (data) setTemplates(prev => [{ ...data, icon: data.icon ?? '📄', color: data.color ?? '#FAF7F3' }, ...prev])
     setTplName(''); setTplIcon('📄'); setTplColor('#FAF7F3'); setShowModal(false); setSavingTpl(false)
+  }
+
+  // Actualizar plantilla activa
+  const handleUpdateTemplate = async () => {
+    if (!activeTpl || !userId) return
+    setSavingTpl(true)
+    await supabase.from('templates').update({ blocks }).eq('id', activeTpl.id)
+    setTemplates(prev => prev.map(t => t.id === activeTpl.id ? { ...t, blocks } : t))
+    setActiveTpl(prev => prev ? { ...prev, blocks } : prev)
+    setSavingTpl(false)
+    alert('Plantilla actualizada')
+  }
+
+  // Eliminar plantilla activa
+  const handleDeleteTemplate = async () => {
+    if (!activeTpl || !userId) return
+    if (!window.confirm(`¿Eliminar la plantilla "${activeTpl.name}"? Esta acción no se puede deshacer.`)) return
+    await supabase.from('templates').delete().eq('id', activeTpl.id)
+    setTemplates(prev => prev.filter(t => t.id !== activeTpl.id))
+    setActiveTpl(null)
+    setBlocks([mkBlock('text'), mkBlock('services')])
+    setStep('picker')
   }
 
   const canSave = !!title && !saving && !sending
@@ -164,15 +197,32 @@ function EditorContent() {
               ← Plantillas
             </button>
           )}
+
           <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px', backdropFilter: 'blur(8px)' }}>
             <p style={{ fontSize: '10px', color: mid, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px' }}>Datos</p>
             <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
             <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
             <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
           </div>
-          <button onClick={() => setShowModal(true)} style={{ background: 'rgba(255,255,255,0.6)', border: `1px solid ${border}`, borderRadius: '20px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
-            Guardar como plantilla
-          </button>
+
+          {/* Botones de plantilla: distintos si viene de una plantilla o no */}
+          {activeTpl ? (
+            <>
+              <button onClick={handleUpdateTemplate} disabled={savingTpl}
+                style={{ background: 'rgba(255,255,255,0.6)', border: `1px solid ${border}`, borderRadius: '20px', padding: '11px', fontSize: '13px', color: accent, cursor: 'pointer', fontWeight: '500', backdropFilter: 'blur(4px)' }}>
+                {savingTpl ? 'Actualizando...' : `Actualizar "${activeTpl.name}"`}
+              </button>
+              <button onClick={handleDeleteTemplate}
+                style={{ background: 'transparent', border: `1px solid #F0B8B8`, borderRadius: '20px', padding: '11px', fontSize: '13px', color: '#C4624A', cursor: 'pointer' }}>
+                Eliminar plantilla
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setShowModal(true)} style={{ background: 'rgba(255,255,255,0.6)', border: `1px solid ${border}`, borderRadius: '20px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+              Guardar como plantilla
+            </button>
+          )}
+
           <button onClick={() => router.push('/dashboard')} style={{ background: 'transparent', color: mid, border: `1px solid ${border}`, padding: '11px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer' }}>
             Cancelar
           </button>
