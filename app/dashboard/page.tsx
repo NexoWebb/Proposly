@@ -7,13 +7,14 @@ import { useIsMobile } from '@/lib/useIsMobile'
 import UserLogo from '@/components/UserLogo'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
-const pageBg = '#F5F0EB'
-const ink = '#1A1208'
-const mid = '#8C7B6B'
-const border = '#DDD5C8'
-const cream = '#FAF7F3'
-const accent = '#C4A882'
-const cardBg = 'rgba(250,247,243,0.8)'
+const pageBg = '#EEF0FF'
+const topbar = '#5B6EE8'
+const ink = '#1E1B4B'
+const mid = '#6B7280'
+const border = '#E0E4FF'
+const cardBg = 'rgba(255,255,255,0.75)'
+const accent = '#6366F1'
+const accentLight = '#EEF0FF'
 
 type Proposal = {
   id: string; title: string; client_name: string; status: string
@@ -23,8 +24,8 @@ type Proposal = {
 const fmt = (d: string | null) => d ? new Date(d).toLocaleString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null
 
 const statusLabel: Record<string, string> = { draft: 'Borrador', sent: 'Enviada', opened: 'Abierta', signed: 'Firmada' }
-const statusColor: Record<string, string> = { draft: '#B8A898', sent: '#C4A882', opened: '#D4854A', signed: '#6B8F5E' }
-const statusBg: Record<string, string> = { draft: '#F0EBE5', sent: '#F5ECD8', opened: '#FAE8DA', signed: '#E8F0E5' }
+const statusColor: Record<string, string> = { draft: '#94A3B8', sent: '#818CF8', opened: '#F59E0B', signed: '#34D399' }
+const statusBg: Record<string, string> = { draft: '#F1F5F9', sent: '#EEF2FF', opened: '#FFFBEB', signed: '#ECFDF5' }
 
 function CopyLinkButton({ id }: { id: string }) {
   const [copied, setCopied] = useState(false)
@@ -36,7 +37,7 @@ function CopyLinkButton({ id }: { id: string }) {
   }
   return (
     <button onClick={handleCopy}
-      style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 12px', fontSize: '11px', color: copied ? '#6B8F5E' : mid, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', transition: 'color 0.2s' }}>
+      style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 12px', fontSize: '11px', color: copied ? '#34D399' : mid, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
       {copied ? '✓ Copiado' : 'Copiar link'}
     </button>
   )
@@ -75,9 +76,9 @@ export default function DashboardPage() {
 
   const stats = [
     { label: 'Total', key: 'all' as FilterKey, value: proposals.length, color: accent },
-    { label: 'Borradores', key: 'draft' as FilterKey, value: proposals.filter(p => p.status === 'draft').length, color: '#B8A898' },
-    { label: 'Abiertas', key: 'opened' as FilterKey, value: opened, color: '#D4854A', sub: 'Pendientes de firma' },
-    { label: 'Firmadas', key: 'signed' as FilterKey, value: signed, color: '#6B8F5E' },
+    { label: 'Borradores', key: 'draft' as FilterKey, value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8' },
+    { label: 'Abiertas', key: 'opened' as FilterKey, value: opened, color: '#F59E0B', sub: 'Pendientes de firma' },
+    { label: 'Firmadas', key: 'signed' as FilterKey, value: signed, color: '#34D399' },
   ]
 
   const filtered = filter === 'all' ? proposals : proposals.filter(p => p.status === filter)
@@ -93,10 +94,10 @@ export default function DashboardPage() {
   })()
 
   const donutData = [
-    { name: 'Borrador', value: proposals.filter(p => p.status === 'draft').length, color: '#B8A898' },
-    { name: 'Enviada', value: sent, color: '#C4A882' },
-    { name: 'Abierta', value: opened, color: '#D4854A' },
-    { name: 'Firmada', value: signed, color: '#6B8F5E' },
+    { name: 'Borrador', value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8' },
+    { name: 'Enviada', value: sent, color: '#818CF8' },
+    { name: 'Abierta', value: opened, color: '#F59E0B' },
+    { name: 'Firmada', value: signed, color: '#34D399' },
   ].filter(d => d.value > 0)
 
   const totalSent = everSent
@@ -118,17 +119,18 @@ export default function DashboardPage() {
 
       {/* Topbar */}
       <div style={{
-        background: 'rgba(26,18,8,0.95)', backdropFilter: 'blur(12px)',
+        background: topbar,
         padding: `0 ${isMobile ? '16px' : '40px'}`, display: 'flex', alignItems: 'center', height: '56px',
         position: 'sticky', top: 0, zIndex: 10,
+        boxShadow: '0 2px 20px rgba(99,102,241,0.25)',
       }}>
         <UserLogo />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <a href="/settings" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', textDecoration: 'none', padding: '6px 14px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <a href="/settings" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', textDecoration: 'none', padding: '6px 14px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)' }}>
             Ajustes
           </a>
           <button onClick={handleSignOut}
-            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer' }}>
+            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.8)', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer' }}>
             {isMobile ? 'Salir' : 'Cerrar sesión'}
           </button>
         </div>
@@ -143,16 +145,16 @@ export default function DashboardPage() {
             <p style={{ fontSize: '13px', color: mid, margin: 0 }}>Gestiona y haz seguimiento de todas tus propuestas</p>
           </div>
           <button onClick={() => router.push('/editor')}
-            style={{ background: ink, color: cream, border: 'none', padding: '10px 22px', borderRadius: '20px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', flexShrink: 0, width: isMobile ? '100%' : 'auto' }}>
+            style={{ background: accent, color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '20px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', flexShrink: 0, width: isMobile ? '100%' : 'auto', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
             + Nueva propuesta
           </button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'rgba(196,168,130,0.12)', borderRadius: '12px', padding: '4px', width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'rgba(99,102,241,0.08)', borderRadius: '12px', padding: '4px', width: 'fit-content' }}>
           {(['proposals', 'stats'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              style={{ background: tab === t ? cream : 'transparent', border: 'none', padding: '8px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', color: tab === t ? ink : mid, cursor: 'pointer', transition: 'all 0.15s', boxShadow: tab === t ? '0 1px 4px rgba(26,18,8,0.08)' : 'none' }}>
+              style={{ background: tab === t ? '#fff' : 'transparent', border: 'none', padding: '8px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '500', color: tab === t ? accent : mid, cursor: 'pointer', transition: 'all 0.15s', boxShadow: tab === t ? '0 1px 4px rgba(99,102,241,0.15)' : 'none' }}>
               {t === 'proposals' ? 'Propuestas' : 'Estadísticas'}
             </button>
           ))}
@@ -160,29 +162,27 @@ export default function DashboardPage() {
 
         {tab === 'proposals' && (
           <>
-            {/* Stats cards */}
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`, gap: '12px', marginBottom: '24px' }}>
               {stats.map(stat => (
                 <div key={stat.key} onClick={() => setFilter(stat.key)}
                   style={{
-                    background: filter === stat.key ? ink : cardBg,
-                    border: `1px solid ${filter === stat.key ? ink : border}`,
+                    background: filter === stat.key ? accent : cardBg,
+                    border: `1px solid ${filter === stat.key ? accent : border}`,
                     borderRadius: '16px', padding: '20px', cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    backdropFilter: 'blur(8px)',
+                    transition: 'all 0.15s', backdropFilter: 'blur(8px)',
+                    boxShadow: filter === stat.key ? `0 4px 16px rgba(99,102,241,0.25)` : '0 1px 4px rgba(99,102,241,0.06)',
                   }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: filter === stat.key ? 'rgba(255,255,255,0.4)' : stat.color }} />
-                    <p style={{ fontSize: '10px', color: filter === stat.key ? 'rgba(255,255,255,0.5)' : mid, margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>{stat.label}</p>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: filter === stat.key ? 'rgba(255,255,255,0.5)' : stat.color }} />
+                    <p style={{ fontSize: '10px', color: filter === stat.key ? 'rgba(255,255,255,0.6)' : mid, margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>{stat.label}</p>
                   </div>
-                  <p style={{ fontSize: isMobile ? '28px' : '32px', fontWeight: '400', color: filter === stat.key ? cream : ink, margin: '0 0 4px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>{stat.value}</p>
-                  {stat.sub && <p style={{ fontSize: '10px', color: filter === stat.key ? 'rgba(255,255,255,0.35)' : '#B8A898', margin: 0 }}>{stat.sub}</p>}
+                  <p style={{ fontSize: isMobile ? '28px' : '32px', fontWeight: '400', color: filter === stat.key ? '#fff' : ink, margin: '0 0 4px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>{stat.value}</p>
+                  {stat.sub && <p style={{ fontSize: '10px', color: filter === stat.key ? 'rgba(255,255,255,0.4)' : '#94A3B8', margin: 0 }}>{stat.sub}</p>}
                 </div>
               ))}
             </div>
 
-            {/* Lista */}
-            <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', overflow: 'hidden', backdropFilter: 'blur(8px)' }}>
+            <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', overflow: 'hidden', backdropFilter: 'blur(8px)', boxShadow: '0 1px 4px rgba(99,102,241,0.06)' }}>
               <div style={{ padding: '16px 24px', borderBottom: `1px solid ${border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: '11px', color: mid, margin: 0, letterSpacing: '1px', textTransform: 'uppercase' }}>
                   {filter === 'all' ? 'Todas las propuestas' : `${statusLabel[filter]}s`}
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                     {filter === 'all' ? 'Todavía no tienes propuestas' : `No hay propuestas ${statusLabel[filter]?.toLowerCase()}s`}
                   </p>
                   {filter === 'all' && (
-                    <button onClick={() => router.push('/editor')} style={{ background: ink, color: cream, border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer' }}>
+                    <button onClick={() => router.push('/editor')} style={{ background: accent, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer' }}>
                       Crear primera propuesta
                     </button>
                   )}
@@ -210,39 +210,31 @@ export default function DashboardPage() {
                   <div key={proposal.id}
                     style={{ padding: isMobile ? '14px 16px' : '16px 24px', borderBottom: index < filtered.length - 1 ? `1px solid ${border}` : 'none', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'background 0.1s' }}
                     onClick={() => router.push(proposal.status === 'signed' ? `/p/${proposal.id}` : `/editor/${proposal.id}`)}
-                    onMouseEnter={e => (e.currentTarget.style.background = `rgba(196,168,130,0.08)`)}
+                    onMouseEnter={e => (e.currentTarget.style.background = accentLight)}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-
-                    {/* Status badge */}
                     <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: statusBg[proposal.status], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor[proposal.status] }} />
                     </div>
-
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: '14px', fontWeight: '500', color: ink, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proposal.title}</p>
                       <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{proposal.client_name}</p>
                     </div>
-
                     {!isMobile && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '120px' }}>
-                        <span style={{ fontSize: '11px', color: '#B8A898' }}>Creada {fmt(proposal.created_at)}</span>
-                        {fmt(proposal.signed_at) && <span style={{ fontSize: '11px', color: '#6B8F5E' }}>Firmada {fmt(proposal.signed_at)}</span>}
+                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>Creada {fmt(proposal.created_at)}</span>
+                        {fmt(proposal.signed_at) && <span style={{ fontSize: '11px', color: '#34D399' }}>Firmada {fmt(proposal.signed_at)}</span>}
                       </div>
                     )}
-
                     <span style={{ fontSize: '11px', color: statusColor[proposal.status], background: statusBg[proposal.status], padding: '3px 10px', borderRadius: '20px', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {statusLabel[proposal.status]}
                     </span>
-
                     <span style={{ fontSize: '14px', fontWeight: '500', color: ink, minWidth: '70px', textAlign: 'right', flexShrink: 0 }}>
                       {Number(proposal.total_amount).toLocaleString('es-ES')}€
                     </span>
-
                     <CopyLinkButton id={proposal.id} />
-
                     {proposal.status !== 'signed' && (
                       <button onClick={e => handleDelete(e, proposal.id)}
-                        style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', color: '#C4624A', cursor: 'pointer', flexShrink: 0 }}>
+                        style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', color: '#EF4444', cursor: 'pointer', flexShrink: 0 }}>
                         Eliminar
                       </button>
                     )}
@@ -257,14 +249,14 @@ export default function DashboardPage() {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
               {[
-                { label: 'Tasa de apertura', value: `${apertura}%`, sub: `${opened + signed} de ${totalSent}`, color: '#D4854A' },
+                { label: 'Tasa de apertura', value: `${apertura}%`, sub: `${opened + signed} de ${totalSent}`, color: '#F59E0B' },
                 { label: 'Tasa de firma', value: `${conversion}%`, sub: `${signed} de ${opened + signed}`, color: accent },
-                { label: 'Importe firmado', value: `${importeFirmado.toLocaleString('es-ES')}€`, sub: `${signed} propuesta${signed !== 1 ? 's' : ''}`, color: '#6B8F5E', span: isMobile },
+                { label: 'Importe firmado', value: `${importeFirmado.toLocaleString('es-ES')}€`, sub: `${signed} propuesta${signed !== 1 ? 's' : ''}`, color: '#34D399', span: isMobile },
               ].map(k => (
-                <div key={k.label} style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '20px', backdropFilter: 'blur(8px)', gridColumn: k.span ? '1 / -1' : 'auto' }}>
+                <div key={k.label} style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '20px', backdropFilter: 'blur(8px)', boxShadow: '0 1px 4px rgba(99,102,241,0.06)', gridColumn: k.span ? '1 / -1' : 'auto' }}>
                   <p style={{ fontSize: '10px', color: mid, margin: '0 0 12px', letterSpacing: '1px', textTransform: 'uppercase' }}>{k.label}</p>
                   <p style={{ fontSize: isMobile ? '28px' : '36px', fontWeight: '400', color: k.color, margin: '0 0 4px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>{k.value}</p>
-                  <p style={{ fontSize: '11px', color: '#B8A898', margin: 0 }}>{k.sub}</p>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0 }}>{k.sub}</p>
                 </div>
               ))}
             </div>
@@ -275,9 +267,9 @@ export default function DashboardPage() {
                   <p style={{ fontSize: '11px', color: mid, margin: '0 0 20px', letterSpacing: '1px', textTransform: 'uppercase' }}>Propuestas por mes</p>
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={barData} barSize={18}>
-                      <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#B8A898' }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#B8A898' }} axisLine={false} tickLine={false} width={24} />
-                      <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '10px', border: `1px solid ${border}`, background: cream }} cursor={{ fill: 'rgba(196,168,130,0.1)' }} />
+                      <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} width={24} />
+                      <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '10px', border: `1px solid ${border}`, background: '#fff' }} cursor={{ fill: accentLight }} />
                       <Bar dataKey="propuestas" fill={accent} radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -289,7 +281,7 @@ export default function DashboardPage() {
                       <Pie data={donutData} cx="50%" cy="50%" innerRadius={48} outerRadius={68} paddingAngle={3} dataKey="value">
                         {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                       </Pie>
-                      <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '10px', border: `1px solid ${border}`, background: cream }} />
+                      <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '10px', border: `1px solid ${border}`, background: '#fff' }} />
                       <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
                     </PieChart>
                   </ResponsiveContainer>
