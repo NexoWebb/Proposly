@@ -119,29 +119,11 @@ export default function EditorEdit({ id }: { id: string }) {
           </div>
         </div>
       )}
-      <div style={{
-      maxWidth: '1280px', margin: '0 auto',
-      padding: isMobile ? '20px 16px 80px' : '36px 32px 80px',
-      display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '240px 1fr',
-      gap: isMobile ? '20px' : '28px',
-      alignItems: 'start',
-    }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 80px' : '48px 40px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: isMobile ? '24px' : '48px', alignItems: 'start' }}>
 
-      {/* ── Sidebar ── */}
-      <div style={{ position: isMobile ? 'static' : 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ marginBottom: '4px' }}>
-          <h1 style={{ fontSize: isMobile ? '20px' : '22px', fontWeight: '400', color: ink, margin: '0 0 4px', letterSpacing: '-0.4px', fontFamily: 'Georgia, serif' }}>
-            Editar propuesta
-          </h1>
-          <p style={{ fontSize: '13px', color: mid, margin: 0, fontFamily: 'sans-serif' }}>
-            Modifica el contenido y guarda
-          </p>
-        </div>
-
-        {/* Metadata */}
-        <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px', backdropFilter: 'blur(8px)' }}>
-          <p style={{ fontSize: '10px', color: mid, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
+        <div style={{ position: isMobile ? 'static' : 'sticky', top: '80px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px', backdropFilter: 'blur(8px)' }}>
+            <p style={{ fontSize: '10px', color: mid, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'sans-serif' }}>Datos</p>
           <input style={inp} placeholder="Título de la propuesta" value={title}       onChange={e => setTitle(e.target.value)} />
           <input style={inp} placeholder="Nombre del cliente"     value={clientName}  onChange={e => setClientName(e.target.value)} />
           <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
