@@ -26,7 +26,29 @@ export async function POST(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://proposly-kappa.vercel.app'
   const proposalUrl = `${appUrl}/p/${id}`
 
-  // Email al cliente — confirmación
+  // Construir resumen de servicios desde los bloques firmados
+  const serviceBlocks = (finalBlocks ?? []).filter((b: { type: string }) => b.type === 'services')
+  const serviceLines = serviceBlocks.flatMap((b: { content: { name: string; price: number; selected?: boolean; optional?: boolean }[] }) =>
+    b.content.filter(s => s.selected !== false)
+  )
+  const servicesHtml = serviceLines.length > 0
+    ? `
+      <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
+        ${serviceLines.map((s: { name: string; price: number }) => `
+          <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#333">${s.name}</td>
+            <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#333;text-align:right;white-space:nowrap">${Number(s.price).toLocaleString('es-ES')}€</td>
+          </tr>
+        `).join('')}
+        <tr>
+          <td style="padding:12px 0 0;font-size:14px;font-weight:600;color:#0f0f0f">Total sin IVA</td>
+          <td style="padding:12px 0 0;font-size:16px;font-weight:600;color:#0f0f0f;text-align:right">${Number(finalTotal ?? 0).toLocaleString('es-ES')}€</td>
+        </tr>
+      </table>
+    `
+    : ''
+
+  // Email al cliente — confirmación con resumen
   if (proposal.client_email) {
     await resend.emails.send({
       from: 'Proposly <onboarding@resend.dev>',
@@ -42,11 +64,14 @@ export async function POST(request: NextRequest) {
             Confirmación de aceptación
           </h1>
           <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 24px">
-            Hola <strong>${proposal.client_name}</strong>, has aceptado correctamente la propuesta
-            <strong>${proposal.title}</strong>. Firmado por: ${signerName}.
+            Hola <strong>${proposal.client_name}</strong>, has aceptado la propuesta
+            <strong>${proposal.title}</strong>. A continuación el resumen de lo acordado:
           </p>
+          ${servicesHtml}
+          <p style="color:#888;font-size:13px;margin:0 0 8px">Firmado por: <strong style="color:#333">${signerName}</strong></p>
+          <p style="color:#888;font-size:13px;margin:0 0 24px">Fecha: <strong style="color:#333">${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>
           <a href="${proposalUrl}" style="display:inline-block;background:#0f0f0f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px">
-            Ver propuesta →
+            Ver propuesta completa →
           </a>
           <p style="color:#bbb;font-size:12px;margin-top:32px">
             Guarda este email como comprobante de tu aceptación.
