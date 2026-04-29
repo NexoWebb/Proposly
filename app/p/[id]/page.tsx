@@ -34,7 +34,7 @@ export default async function ProposalPublicPage({
 
   const expired = proposal.expires_at && new Date() > new Date(proposal.expires_at)
 
-  if (!expired && proposal.status !== 'signed') {
+  if (!expired && !autoExport && proposal.status !== 'signed') {
     await trackProposal(id).catch(() => {})
   }
 

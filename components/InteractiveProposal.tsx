@@ -69,7 +69,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: 'a4',
+      format: [imgWidth, imgHeight],
     })
 
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight)
