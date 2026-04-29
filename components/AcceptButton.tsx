@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Block } from '@/components/BlockEditor'
 
 export default function AcceptButton({ proposalId, signed, finalTotal, finalBlocks }: { proposalId: string, signed: boolean, finalTotal?: number, finalBlocks?: Block[] }) {
@@ -13,16 +12,17 @@ export default function AcceptButton({ proposalId, signed, finalTotal, finalBloc
     if (!name.trim()) return
     setLoading(true)
 
-    await supabase
-      .from('proposals')
-      .update({
-        status: 'signed',
-        signed_at: new Date().toISOString(),
-        signer_name: name,
-        ...(finalTotal !== undefined ? { total_amount: finalTotal } : {}),
-        ...(finalBlocks !== undefined ? { blocks: finalBlocks } : {}),
-      })
-      .eq('id', proposalId)
+    const res = await fetch('/api/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: proposalId, signerName: name, finalTotal, finalBlocks }),
+    })
+
+    if (!res.ok) {
+      setLoading(false)
+      alert('Error al confirmar la aceptación. Por favor, inténtalo de nuevo.')
+      return
+    }
 
     setStep('done')
     setLoading(false)
