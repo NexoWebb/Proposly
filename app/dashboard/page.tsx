@@ -153,7 +153,7 @@ export default function DashboardPage() {
       return
     }
 
-    const newBlocks = (fullProposal.blocks || []).map((b: any) => ({ ...b, id: crypto.randomUUID() }))
+    const newBlocks = (fullProposal.blocks || []).map((b: Record<string, unknown>) => ({ ...b, id: crypto.randomUUID() }))
     const newTitle = `${fullProposal.title} (Copia)`
 
     const { data: newProposal } = await supabase.from('proposals').insert({
