@@ -5,14 +5,22 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import UserLogo from '@/components/UserLogo'
 
+const pageBg = '#D6E8F5'
+const topbar = '#4A7FA5'
+const ink = '#0F2A3D'
+const mid = '#5A7A8F'
+const border = '#B8D4E8'
+const cardBg = 'rgba(255,255,255,0.82)'
+const accent = '#4A7FA5'
+
 const input: React.CSSProperties = {
   width: '100%',
-  background: '#F8FAFC',
-  border: '1px solid #E2E8F0',
+  background: 'rgba(255,255,255,0.9)',
+  border: `1px solid ${border}`,
   borderRadius: '8px',
   padding: '10px 14px',
   fontSize: '14px',
-  color: '#0F172A',
+  color: ink,
   outline: 'none',
   fontFamily: 'sans-serif',
   boxSizing: 'border-box',
@@ -121,16 +129,16 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: '14px', fontFamily: 'sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mid, fontSize: '14px', fontFamily: 'sans-serif' }}>
         Cargando...
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#EEF2FF', fontFamily: 'sans-serif' }}>
-      <div style={{ background: '#1C2B5E', padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px' }}>
-        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+    <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'sans-serif', color: ink }}>
+      <div style={{ background: topbar, padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px', boxShadow: '0 2px 16px rgba(74,127,165,0.2)' }}>
+        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
           ← Dashboard
         </a>
         <div style={{ margin: '0 auto' }}>
@@ -141,27 +149,27 @@ export default function SettingsPage() {
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '48px 24px 80px' }}>
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: '400', color: '#0F172A', margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Ajustes</h1>
-          <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>Gestiona tu perfil y las preferencias de tu cuenta</p>
+          <h1 style={{ fontSize: '26px', fontWeight: '400', color: ink, margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Ajustes</h1>
+          <p style={{ fontSize: '13px', color: mid, margin: 0 }}>Gestiona tu perfil y las preferencias de tu cuenta</p>
         </div>
 
         {/* Perfil */}
-        <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '28px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Perfil</p>
+        <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '28px', marginBottom: '16px', backdropFilter: 'blur(8px)' }}>
+          <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Perfil</p>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '13px', color: '#64748B', display: 'block', marginBottom: '6px' }}>Nombre</label>
+            <label style={{ fontSize: '13px', color: mid, display: 'block', marginBottom: '6px' }}>Nombre</label>
             <input style={input} type="text" placeholder="Tu nombre o el de tu agencia" value={name} onChange={e => setName(e.target.value)} />
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ fontSize: '13px', color: '#64748B', display: 'block', marginBottom: '6px' }}>Logo</label>
+            <label style={{ fontSize: '13px', color: mid, display: 'block', marginBottom: '6px' }}>Logo</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div
                 onClick={() => fileRef.current?.click()}
                 style={{
                   width: '72px', height: '72px', borderRadius: '10px',
-                  border: '1px dashed #CBD5E1', background: '#F8FAFC',
+                  border: `1px dashed ${border}`, background: 'rgba(255,255,255,0.6)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', overflow: 'hidden', flexShrink: 0,
                 }}
@@ -174,7 +182,7 @@ export default function SettingsPage() {
               <div>
                 <button
                   onClick={() => fileRef.current?.click()}
-                  style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', color: '#64748B', cursor: 'pointer', display: 'block', marginBottom: '4px' }}
+                  style={{ background: 'transparent', border: `1px solid ${border}`, borderRadius: '20px', padding: '8px 14px', fontSize: '13px', color: mid, cursor: 'pointer', display: 'block', marginBottom: '4px' }}
                 >
                   {currentLogo ? 'Cambiar logo' : 'Subir logo'}
                 </button>
@@ -185,32 +193,32 @@ export default function SettingsPage() {
           </div>
 
           {profileMsg && (
-            <p style={{ fontSize: '13px', color: profileMsg.startsWith('✓') ? '#22C55E' : '#EF4444', marginBottom: '12px' }}>{profileMsg}</p>
+            <p style={{ fontSize: '13px', color: profileMsg.startsWith('✓') ? '#4A9B6F' : '#C4624A', marginBottom: '12px' }}>{profileMsg}</p>
           )}
 
           <button
             onClick={handleSaveProfile}
             disabled={savingProfile}
-            style={{ background: savingProfile ? '#C7D2FE' : '#4361EE', color: savingProfile ? '#818CF8' : '#fff', border: 'none', borderRadius: '10px', padding: '11px 24px', fontSize: '14px', fontWeight: '500', cursor: savingProfile ? 'default' : 'pointer' }}
+            style={{ background: savingProfile ? border : accent, color: savingProfile ? mid : '#fff', border: 'none', borderRadius: '20px', padding: '11px 24px', fontSize: '14px', fontWeight: '500', cursor: savingProfile ? 'default' : 'pointer', boxShadow: savingProfile ? 'none' : '0 4px 12px rgba(74,127,165,0.3)' }}
           >
             {savingProfile ? 'Guardando...' : 'Guardar perfil'}
           </button>
         </div>
 
         {/* Plantillas */}
-        <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '28px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Mis plantillas</p>
+        <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '28px', marginBottom: '16px', backdropFilter: 'blur(8px)' }}>
+          <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Mis plantillas</p>
           {templates.length === 0 ? (
             <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0 }}>Aún no tienes plantillas guardadas.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {templates.map(tpl => (
-                <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '14px', color: '#0F172A', fontFamily: 'sans-serif' }}>{tpl.name}</span>
+                <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(255,255,255,0.6)', borderRadius: '10px', border: `1px solid ${border}` }}>
+                  <span style={{ fontSize: '14px', color: ink, fontFamily: 'sans-serif' }}>{tpl.name}</span>
                   <button
                     onClick={() => handleDeleteTemplate(tpl.id)}
                     disabled={deletingTpl === tpl.id}
-                    style={{ background: 'transparent', border: 'none', color: '#EF4444', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', fontFamily: 'sans-serif' }}
+                    style={{ background: 'transparent', border: 'none', color: '#C4624A', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', fontFamily: 'sans-serif' }}
                   >
                     {deletingTpl === tpl.id ? '...' : 'Eliminar'}
                   </button>
@@ -221,22 +229,22 @@ export default function SettingsPage() {
         </div>
 
         {/* Contraseña */}
-        <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '28px' }}>
-          <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Seguridad</p>
+        <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', padding: '28px', backdropFilter: 'blur(8px)' }}>
+          <p style={{ fontSize: '11px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 20px' }}>Seguridad</p>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '13px', color: '#64748B', display: 'block', marginBottom: '6px' }}>Nueva contraseña</label>
+            <label style={{ fontSize: '13px', color: mid, display: 'block', marginBottom: '6px' }}>Nueva contraseña</label>
             <input style={input} type="password" placeholder="Mínimo 6 caracteres" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
           </div>
 
           {passwordMsg && (
-            <p style={{ fontSize: '13px', color: passwordMsg.startsWith('✓') ? '#22C55E' : '#EF4444', marginBottom: '12px' }}>{passwordMsg}</p>
+            <p style={{ fontSize: '13px', color: passwordMsg.startsWith('✓') ? '#4A9B6F' : '#C4624A', marginBottom: '12px' }}>{passwordMsg}</p>
           )}
 
           <button
             onClick={handleSavePassword}
             disabled={savingPassword}
-            style={{ background: savingPassword ? '#C7D2FE' : '#4361EE', color: savingPassword ? '#818CF8' : '#fff', border: 'none', borderRadius: '10px', padding: '11px 24px', fontSize: '14px', fontWeight: '500', cursor: savingPassword ? 'default' : 'pointer' }}
+            style={{ background: savingPassword ? border : accent, color: savingPassword ? mid : '#fff', border: 'none', borderRadius: '20px', padding: '11px 24px', fontSize: '14px', fontWeight: '500', cursor: savingPassword ? 'default' : 'pointer', boxShadow: savingPassword ? 'none' : '0 4px 12px rgba(74,127,165,0.3)' }}
           >
             {savingPassword ? 'Guardando...' : 'Cambiar contraseña'}
           </button>
