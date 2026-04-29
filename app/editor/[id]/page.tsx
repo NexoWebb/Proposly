@@ -1,6 +1,9 @@
 import EditorEdit from './EditorEdit'
 import UserLogo from '@/components/UserLogo'
 
+const pageBg = '#D6E8F5'
+const topbar = '#4A7FA5'
+
 export default async function EditProposalPage({
   params,
 }: {
@@ -8,9 +11,9 @@ export default async function EditProposalPage({
 }) {
   const { id } = await params
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F0EB', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: '#1A1208', padding: '0 40px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0 }}>
-        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textDecoration: 'none' }}>
+    <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: topbar, padding: '0 24px', display: 'flex', alignItems: 'center', height: '56px', flexShrink: 0, boxShadow: '0 2px 16px rgba(74,127,165,0.2)' }}>
+        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', textDecoration: 'none' }}>
           ← Dashboard
         </a>
         <div style={{ margin: '0 auto' }}>
