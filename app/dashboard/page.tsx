@@ -280,22 +280,25 @@ export default function DashboardPage() {
                     <span style={{ fontSize: '14px', fontWeight: '500', color: ink, minWidth: '70px', textAlign: 'right', flexShrink: 0 }}>
                       {Number(proposal.total_amount).toLocaleString('es-ES')}€
                     </span>
-                    <CopyLinkButton id={proposal.id} />
-                    {proposal.status === 'draft' && (
-                      <button onClick={e => handleMarkAsSent(e, proposal.id)}
-                        style={{ background: 'none', border: '1px solid #4A9B6F', borderRadius: '20px', padding: '4px 12px', fontSize: '11px', color: '#4A9B6F', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                        Pasar a enviada
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                      <CopyLinkButton id={proposal.id} />
+                      {proposal.status === 'draft' && (
+                        <button onClick={e => handleMarkAsSent(e, proposal.id)}
+                          style={{ background: '#E8F5EE', border: '1px solid #4A9B6F', borderRadius: '20px', padding: '4px 12px', fontSize: '11px', color: '#4A9B6F', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', fontWeight: '500' }}>
+                          Enviar
+                        </button>
+                      )}
+                      <button onClick={e => handleDuplicate(e, proposal.id)} title="Duplicar propuesta"
+                        style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: mid, cursor: 'pointer', flexShrink: 0 }}>
+                        📄
                       </button>
-                    )}
-                    <button onClick={e => handleDuplicate(e, proposal.id)}
-                      style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', color: mid, cursor: 'pointer', flexShrink: 0 }}>
-                      Duplicar
-                    </button>
-                    {proposal.status !== 'signed' && (
-                      <button onClick={e => handleDelete(e, proposal.id)} style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', color: '#EF4444', cursor: 'pointer', flexShrink: 0 }}>
-                        Eliminar
-                      </button>
-                    )}
+                      {proposal.status !== 'signed' && (
+                        <button onClick={e => handleDelete(e, proposal.id)} title="Eliminar propuesta"
+                          style={{ background: 'none', border: `1px solid #fca5a5`, borderRadius: '20px', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#EF4444', cursor: 'pointer', flexShrink: 0 }}>
+                          🗑️
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
