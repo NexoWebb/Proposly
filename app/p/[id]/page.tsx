@@ -9,10 +9,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProposalPublicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ export?: string }>
 }) {
   const { id } = await params
+  const sp = await searchParams
+  const autoExport = sp.export === 'true'
 
   const { data: proposal, error } = await supabase
     .from('proposals')
@@ -55,7 +59,7 @@ export default async function ProposalPublicPage({
     .reduce((sum, s) => sum + Number(s.price), 0)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#D6E8F5', fontFamily: "'Georgia', serif" }}>
+    <div id="proposal-content" style={{ minHeight: '100vh', background: '#D6E8F5', fontFamily: "'Georgia', serif" }}>
       <style>{`
         @media (max-width: 640px) {
           .proposal-header { padding: 32px 20px 28px !important; }
@@ -90,10 +94,11 @@ export default async function ProposalPublicPage({
         </div>
       </div>
 
-      <InteractiveProposal 
-        initialBlocks={blocks} 
-        proposalId={id} 
-        signed={proposal.status === 'signed'} 
+      <InteractiveProposal
+        initialBlocks={blocks}
+        proposalId={id}
+        signed={proposal.status === 'signed'}
+        autoExport={autoExport}
       />
     </div>
   )

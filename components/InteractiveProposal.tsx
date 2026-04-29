@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 import type { Block, Service, TimelineItem } from '@/components/BlockEditor'
 import AcceptButton from './AcceptButton'
 
@@ -8,9 +10,10 @@ interface Props {
   initialBlocks: Block[]
   proposalId: string
   signed: boolean
+  autoExport?: boolean
 }
 
-export default function InteractiveProposal({ initialBlocks, proposalId, signed }: Props) {
+export default function InteractiveProposal({ initialBlocks, proposalId, signed, autoExport }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(() => {
     return initialBlocks.map(b => {
       if (b.type === 'services') {
@@ -47,6 +50,33 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
   }
 
   const currentTotal = calculateTotal()
+
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById('proposal-content')
+    if (!element) return
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#D6E8F5',
+    })
+
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: [canvas.width / 2, canvas.height / 2],
+    })
+
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2)
+    pdf.save(`propuesta-${proposalId}.pdf`)
+  }
+
+  useEffect(() => {
+    if (!autoExport) return
+    handleDownloadPDF()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoExport])
 
   return (
     <div className="proposal-content" style={{ maxWidth: '780px', margin: '0 auto', padding: '40px 24px' }}>
@@ -205,12 +235,35 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
 
       <div style={{ height: '1px', background: '#B8D4E8', margin: '32px 0' }} />
 
-      <AcceptButton
-        proposalId={proposalId}
-        signed={signed}
-        finalTotal={currentTotal}
-        finalBlocks={blocks}
-      />
+      {/* Acciones excluidas del PDF */}
+      <div data-html2canvas-ignore="true" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <button
+          onClick={handleDownloadPDF}
+          style={{
+            alignSelf: 'flex-start',
+            background: 'transparent',
+            border: '1px solid #B8D4E8',
+            borderRadius: '20px',
+            padding: '8px 18px',
+            fontSize: '13px',
+            color: '#4A7FA5',
+            cursor: 'pointer',
+            fontFamily: 'sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          ⬇ Descargar PDF
+        </button>
+
+        <AcceptButton
+          proposalId={proposalId}
+          signed={signed}
+          finalTotal={currentTotal}
+          finalBlocks={blocks}
+        />
+      </div>
     </div>
   )
 }

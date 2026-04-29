@@ -297,6 +297,10 @@ export default function DashboardPage() {
                           Enviar
                         </button>
                       )}
+                      <button onClick={e => { e.stopPropagation(); window.open(`/p/${proposal.id}?export=true`, '_blank') }} title="Descargar PDF"
+                        style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: mid, cursor: 'pointer', flexShrink: 0 }}>
+                        ⬇
+                      </button>
                       <button onClick={e => handleDuplicate(e, proposal.id)} title="Duplicar propuesta"
                         style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: mid, cursor: 'pointer', flexShrink: 0 }}>
                         📄
