@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Block, Service } from '@/components/BlockEditor'
+import type { Block, Service, TimelineItem } from '@/components/BlockEditor'
 import AcceptButton from './AcceptButton'
 
 interface Props {
@@ -140,6 +140,56 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
                 <span style={{ color: '#ffffff', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px' }}>
                   {svcSelectedTotal.toLocaleString('es-ES')}€
                 </span>
+              </div>
+            </div>
+          )
+        }
+        if (block.type === 'timeline') {
+          const tl = block as Extract<Block, { type: 'timeline' }>
+          return (
+            <div key={i} style={{ margin: '32px 0' }}>
+              {tl.title && (
+                <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '28px' }}>
+                  {tl.title}
+                </p>
+              )}
+              <div style={{ position: 'relative', paddingLeft: '36px' }}>
+                <div style={{ position: 'absolute', left: '11px', top: '16px', bottom: '16px', width: '1.5px', background: '#B8D4E8' }} />
+                {tl.items.map((item: TimelineItem, ti: number) => {
+                  const isLast = ti === tl.items.length - 1
+                  return (
+                    <div key={item.id} style={{ position: 'relative', marginBottom: isLast ? 0 : '24px' }}>
+                      <div style={{
+                        position: 'absolute', left: '-36px', top: '6px',
+                        width: '22px', height: '22px', borderRadius: '50%',
+                        background: isLast ? '#2d7a4f' : '#4A7FA5',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '11px', fontWeight: '600', color: '#fff', zIndex: 1,
+                      }}>
+                        {isLast ? '✓' : ti + 1}
+                      </div>
+                      <div style={{
+                        background: isLast ? 'rgba(45,122,79,0.06)' : '#fff',
+                        border: `1px solid ${isLast ? 'rgba(45,122,79,0.2)' : '#E2E8F0'}`,
+                        borderRadius: '10px', padding: '14px 16px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: item.description ? '6px' : 0 }}>
+                          <span style={{ fontSize: '15px', color: '#0F2A3D', fontFamily: 'sans-serif', fontWeight: '500' }}>{item.title}</span>
+                          {item.duration && (
+                            <span style={{ fontSize: '11px', color: '#4A7FA5', background: '#EAF4FB', padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {item.duration}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p style={{ fontSize: '13px', color: '#5A7A8F', margin: 0, lineHeight: '1.6', fontFamily: 'sans-serif', fontStyle: 'normal' }}>
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )

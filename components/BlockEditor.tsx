@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export type Service = { name: string; price: number; optional?: boolean; selected?: boolean }
+export type TimelineItem = { id: string; title: string; description: string; duration: string }
 
 export type Block =
   | { id: string; type: 'header'; content: string }
@@ -11,6 +12,7 @@ export type Block =
   | { id: string; type: 'image'; url: string; caption: string }
   | { id: string; type: 'separator' }
   | { id: string; type: 'services'; content: Service[] }
+  | { id: string; type: 'timeline'; title: string; items: TimelineItem[] }
 
 export function mkBlock(type: Block['type']): Block {
   const id = crypto.randomUUID()
@@ -20,6 +22,7 @@ export function mkBlock(type: Block['type']): Block {
     case 'image':    return { id, type: 'image', url: '', caption: '' }
     case 'separator':return { id, type: 'separator' }
     case 'services': return { id, type: 'services', content: [{ name: '', price: 0, optional: false, selected: true }] }
+    case 'timeline': return { id, type: 'timeline', title: 'Fases del proyecto', items: [{ id: crypto.randomUUID(), title: '', description: '', duration: '' }] }
   }
 }
 
@@ -49,6 +52,7 @@ const TYPES: { type: Block['type']; label: string; icon: string }[] = [
   { type: 'image',     label: 'Imagen',     icon: '🖼️' },
   { type: 'separator', label: 'Separador',  icon: '—' },
   { type: 'services',  label: 'Servicios',  icon: '€' },
+  { type: 'timeline',  label: 'Timeline',   icon: '📅' },
 ]
 
 export default function BlockEditor({ blocks, onChange, userId }: Props) {
@@ -304,6 +308,67 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                   <span style={{ fontSize: '13px', color: '#888', fontFamily: 'sans-serif' }}>Total sin IVA</span>
                   <span style={{ fontSize: '20px', color: '#0f0f0f', fontFamily: 'Georgia, serif' }}>{total.toLocaleString('es-ES')}€</span>
                 </div>
+              </div>
+            )
+          })()}
+
+          {/* TIMELINE */}
+          {block.type === 'timeline' && (() => {
+            const updateItem = (ii: number, field: keyof TimelineItem, val: string) => {
+              const items = block.items.map((item, idx) => idx === ii ? { ...item, [field]: val } : item)
+              update(i, { ...block, items })
+            }
+            const swapItems = (a: number, b: number) => {
+              const items = [...block.items]; [items[a], items[b]] = [items[b], items[a]]
+              update(i, { ...block, items })
+            }
+            return (
+              <div style={card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <span style={badge}>Timeline</span>
+                  <Actions i={i} />
+                </div>
+                <input
+                  style={{ ...fieldInput, width: '100%', boxSizing: 'border-box', marginBottom: '16px', fontSize: '15px' }}
+                  placeholder="Título del timeline (ej: Fases del proyecto)"
+                  value={block.title}
+                  onChange={e => update(i, { ...block, title: e.target.value })}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
+                  {block.items.map((item, ii) => (
+                    <div key={item.id} style={{ background: '#f8f7f4', border: '1px solid #e8e3dc', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ ...badge, minWidth: '18px' }}>{ii + 1}</span>
+                        <input
+                          style={{ ...fieldInput, flex: 1 }}
+                          placeholder="Título de la fase"
+                          value={item.title}
+                          onChange={e => updateItem(ii, 'title', e.target.value)}
+                        />
+                        <input
+                          style={{ ...fieldInput, width: '90px' }}
+                          placeholder="Duración"
+                          value={item.duration}
+                          onChange={e => updateItem(ii, 'duration', e.target.value)}
+                        />
+                        <button style={iconBtn(ii === 0)} onClick={() => swapItems(ii - 1, ii)} disabled={ii === 0}>↑</button>
+                        <button style={iconBtn(ii === block.items.length - 1)} onClick={() => swapItems(ii, ii + 1)} disabled={ii === block.items.length - 1}>↓</button>
+                        <button style={iconBtn(false, true)} onClick={() => update(i, { ...block, items: block.items.filter((_, idx) => idx !== ii) })}>×</button>
+                      </div>
+                      <textarea
+                        style={{ ...fieldInput, width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: '52px' }}
+                        placeholder="Descripción de la fase (opcional)"
+                        value={item.description}
+                        onChange={e => updateItem(ii, 'description', e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => update(i, { ...block, items: [...block.items, { id: crypto.randomUUID(), title: '', description: '', duration: '' }] })}
+                  style={{ width: '100%', background: 'transparent', border: '1px dashed #e8e3dc', borderRadius: '6px', padding: '8px', fontSize: '13px', color: '#aaa', cursor: 'pointer', fontFamily: 'sans-serif' }}
+                >+ Añadir fase</button>
               </div>
             )
           })()}
