@@ -1,12 +1,28 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { supabase } from '@/lib/supabase'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
+import DOMPurify from 'isomorphic-dompurify'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: NextRequest) {
   const { id, message } = await request.json()
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+
+  // Verificar autenticación y ownership
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: ownerCheck } = await supabase
+    .from('proposals')
+    .select('user_id')
+    .eq('id', id)
+    .single()
+
+  if (!ownerCheck || ownerCheck.user_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { data: proposal, error: fetchError } = await supabaseAdmin
     .from('proposals')
@@ -40,7 +56,7 @@ export async function POST(request: NextRequest) {
         <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 24px">
           Tienes una nueva propuesta lista para revisar: <strong>${proposal.title}</strong>.
         </p>
-        ${message ? `<div style="background:#f8f9fa;border-left:3px solid #ddd;border-radius:6px;padding:14px 18px;margin:0 0 24px"><p style="color:#555;font-size:14px;line-height:1.6;margin:0;font-style:italic">${message}</p></div>` : ''}
+        ${message ? `<div style="background:#f8f9fa;border-left:3px solid #ddd;border-radius:6px;padding:14px 18px;margin:0 0 24px"><p style="color:#555;font-size:14px;line-height:1.6;margin:0;font-style:italic">${DOMPurify.sanitize(message)}</p></div>` : ''}
         <a href="${proposalUrl}" style="display:inline-block;background:#0f0f0f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px">
           Ver propuesta →
         </a>
