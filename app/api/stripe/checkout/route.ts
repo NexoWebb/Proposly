@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       metadata: { user_id: user.id },
     })
 
-    return NextResponse.json({ sessionId: session.id })
+    return NextResponse.json({ url: session.url })
   } catch (error) {
     console.error('Stripe checkout error:', error)
     const msg = error instanceof Error ? error.message : String(error)

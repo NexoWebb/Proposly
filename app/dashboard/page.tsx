@@ -205,9 +205,8 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` }
       })
-      const { sessionId } = await res.json()
-      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
-      await stripe?.redirectToCheckout({ sessionId })
+      const { url } = await res.json()
+      if (url) window.location.href = url
     } catch (error) {
       console.error('Upgrade error:', error)
       alert('Error al procesarse a Stripe')
