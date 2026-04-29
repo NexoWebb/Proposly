@@ -192,43 +192,38 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
                   {tl.title}
                 </p>
               )}
-              <div style={{ position: 'relative', paddingLeft: '36px' }}>
-                <div style={{ position: 'absolute', left: '11px', top: '16px', bottom: '16px', width: '1.5px', background: '#B8D4E8' }} />
-                {tl.items.map((item: TimelineItem, ti: number) => {
-                  const isLast = ti === tl.items.length - 1
-                  return (
-                    <div key={item.id} style={{ position: 'relative', marginBottom: isLast ? 0 : '24px' }}>
-                      <div style={{
-                        position: 'absolute', left: '-36px', top: '6px',
-                        width: '22px', height: '22px', borderRadius: '50%',
-                        background: isLast ? '#2d7a4f' : '#4A7FA5',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '11px', fontWeight: '600', color: '#fff', zIndex: 1,
-                      }}>
-                        {isLast ? '✓' : ti + 1}
-                      </div>
-                      <div style={{
-                        background: isLast ? 'rgba(45,122,79,0.06)' : 'rgba(255,255,255,0.82)',
-                        border: `1px solid ${isLast ? 'rgba(45,122,79,0.2)' : '#B8D4E8'}`,
-                        borderRadius: '10px', padding: '14px 16px',
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: item.description ? '6px' : 0 }}>
-                          <span style={{ fontSize: '15px', color: '#0F2A3D', fontFamily: 'sans-serif', fontWeight: '500' }}>{item.title}</span>
-                          {item.duration && (
-                            <span style={{ fontSize: '11px', color: '#4A7FA5', background: '#EAF4FB', padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {item.duration}
-                            </span>
-                          )}
-                        </div>
-                        {item.description && (
-                          <p style={{ fontSize: '13px', color: '#5A7A8F', margin: 0, lineHeight: '1.6', fontFamily: 'sans-serif', fontStyle: 'normal' }}>
-                            {item.description}
-                          </p>
+              <div style={{ position: 'relative', paddingLeft: '48px' }}>
+                {tl.items.length > 1 && (
+                  <div style={{ position: 'absolute', left: '15px', top: '22px', bottom: '22px', width: '2px', background: '#B8D4E8' }} />
+                )}
+                {tl.items.map((item: TimelineItem, ti: number) => (
+                  <div key={item.id} style={{ position: 'relative', marginBottom: ti < tl.items.length - 1 ? '20px' : 0 }}>
+                    <div style={{
+                      position: 'absolute', left: '-48px', top: '8px',
+                      width: '30px', height: '30px', borderRadius: '50%',
+                      background: '#4A7FA5',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '13px', fontWeight: '700', color: '#fff', zIndex: 1,
+                    }}>
+                      {ti + 1}
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.82)', border: '1px solid #B8D4E8', borderRadius: '10px', padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: item.description ? '6px' : 0 }}>
+                        <span style={{ fontSize: '15px', color: '#0F2A3D', fontFamily: 'sans-serif', fontWeight: '700' }}>{item.title}</span>
+                        {item.duration && (
+                          <span style={{ fontSize: '11px', color: '#4A7FA5', background: '#EAF4FB', padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {item.duration}
+                          </span>
                         )}
                       </div>
+                      {item.description && (
+                        <p style={{ fontSize: '13px', color: '#5A7A8F', margin: 0, lineHeight: '1.6', fontFamily: 'sans-serif', fontStyle: 'normal' }}>
+                          {item.description}
+                        </p>
+                      )}
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           )
