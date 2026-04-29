@@ -314,6 +314,7 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
 
           {/* TIMELINE */}
           {block.type === 'timeline' && (() => {
+            const timelineOffset = blocks.slice(0, i).reduce((sum, b) => b.type === 'timeline' ? sum + (b as Extract<Block, {type:'timeline'}>).items.length : sum, 0)
             const updateItem = (ii: number, field: keyof TimelineItem, val: string) => {
               const items = block.items.map((item, idx) => idx === ii ? { ...item, [field]: val } : item)
               update(i, { ...block, items })
@@ -345,7 +346,7 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                           justifyContent: 'center', fontSize: '13px', fontWeight: '600',
                           color: '#fff', flexShrink: 0, marginTop: '8px',
                         }}>
-                          {stepIndex + 1}
+                          {timelineOffset + stepIndex + 1}
                         </div>
                         {stepIndex < block.items.length - 1 && (
                           <div style={{ width: '2px', flex: 1, background: '#B8D4E8', margin: '4px 0' }} />
