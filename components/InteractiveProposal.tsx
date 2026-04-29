@@ -55,13 +55,21 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
     const element = document.getElementById('proposal-content')
     if (!element) return
 
+    const originalWidth = element.style.width
+    const originalMaxWidth = element.style.maxWidth
+    element.style.width = '900px'
+    element.style.maxWidth = '900px'
+
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#D6E8F5',
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
+      width: 900,
+      windowWidth: 900,
     })
+
+    element.style.width = originalWidth
+    element.style.maxWidth = originalMaxWidth
 
     const imgWidth = 210
     const imgHeight = (canvas.height * imgWidth) / canvas.width
@@ -69,7 +77,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [imgWidth, imgHeight],
+      format: 'a4',
     })
 
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight)
