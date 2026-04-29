@@ -334,46 +334,51 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                   value={block.title}
                   onChange={e => update(i, { ...block, title: e.target.value })}
                 />
-                <div style={{ position: 'relative', paddingLeft: '44px', marginBottom: '8px' }}>
-                  {block.items.length > 1 && (
-                    <div style={{ position: 'absolute', left: '14px', top: '22px', bottom: '22px', width: '2px', background: '#B8D4E8' }} />
-                  )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0', marginBottom: '8px' }}>
                   {block.items.map((item, ii) => (
-                    <div key={item.id} style={{ position: 'relative', marginBottom: ii < block.items.length - 1 ? '14px' : 0 }}>
-                      <div style={{
-                        position: 'absolute', left: '-44px', top: '8px',
-                        width: '30px', height: '30px', borderRadius: '50%',
-                        background: '#4A7FA5', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', fontSize: '13px', fontWeight: '600',
-                        color: '#fff', zIndex: 1,
-                      }}>
-                        {ii + 1}
-                      </div>
-                      <div style={{ background: '#f8f7f4', border: '1px solid #e8e3dc', borderRadius: '8px', padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                          <input
-                            style={{ ...fieldInput, flex: 1, fontSize: '15px', fontWeight: '500' }}
-                            placeholder="Nombre de la fase"
-                            value={item.title}
-                            onChange={e => updateItem(ii, 'title', e.target.value)}
-                          />
-                          <input
-                            style={{ ...fieldInput, width: '100px', flexShrink: 0 }}
-                            placeholder="Duración"
-                            value={item.duration}
-                            onChange={e => updateItem(ii, 'duration', e.target.value)}
-                          />
-                          <button style={iconBtn(ii === 0)} onClick={() => swapItems(ii - 1, ii)} disabled={ii === 0}>↑</button>
-                          <button style={iconBtn(ii === block.items.length - 1)} onClick={() => swapItems(ii, ii + 1)} disabled={ii === block.items.length - 1}>↓</button>
-                          <button style={iconBtn(false, true)} onClick={() => update(i, { ...block, items: block.items.filter((_, idx) => idx !== ii) })}>×</button>
+                    <div key={item.id} style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
+                      {/* Circle + line column */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                        <div style={{
+                          width: '30px', height: '30px', borderRadius: '50%',
+                          background: '#4A7FA5', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', fontSize: '13px', fontWeight: '600',
+                          color: '#fff', flexShrink: 0, marginTop: '8px',
+                        }}>
+                          {ii + 1}
                         </div>
-                        <textarea
-                          style={{ ...fieldInput, width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: '48px', color: '#888' }}
-                          placeholder="Descripción opcional..."
-                          value={item.description}
-                          onChange={e => updateItem(ii, 'description', e.target.value)}
-                          rows={2}
-                        />
+                        {ii < block.items.length - 1 && (
+                          <div style={{ width: '2px', flex: 1, background: '#B8D4E8', margin: '4px 0' }} />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div style={{ flex: 1, paddingBottom: ii < block.items.length - 1 ? '14px' : 0 }}>
+                        <div style={{ background: '#f8f7f4', border: '1px solid #e8e3dc', borderRadius: '8px', padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                            <input
+                              style={{ ...fieldInput, flex: 1, fontSize: '15px', fontWeight: '500' }}
+                              placeholder="Nombre de la fase"
+                              value={item.title}
+                              onChange={e => updateItem(ii, 'title', e.target.value)}
+                            />
+                            <input
+                              style={{ ...fieldInput, width: '100px', flexShrink: 0 }}
+                              placeholder="Duración"
+                              value={item.duration}
+                              onChange={e => updateItem(ii, 'duration', e.target.value)}
+                            />
+                            <button style={iconBtn(ii === 0)} onClick={() => swapItems(ii - 1, ii)} disabled={ii === 0}>↑</button>
+                            <button style={iconBtn(ii === block.items.length - 1)} onClick={() => swapItems(ii, ii + 1)} disabled={ii === block.items.length - 1}>↓</button>
+                            <button style={iconBtn(false, true)} onClick={() => update(i, { ...block, items: block.items.filter((_, idx) => idx !== ii) })}>×</button>
+                          </div>
+                          <textarea
+                            style={{ ...fieldInput, width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: '48px', color: '#888' }}
+                            placeholder="Descripción opcional..."
+                            value={item.description}
+                            onChange={e => updateItem(ii, 'description', e.target.value)}
+                            rows={2}
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
