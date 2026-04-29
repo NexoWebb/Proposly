@@ -89,7 +89,8 @@ function EditorContent() {
     setShowSendModal(false)
     const { data } = await persist()
     if (!data?.id) { setSending(false); return }
-    const res = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: data.id, message: customMessage.trim() || undefined }) })
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token ?? ''}` }, body: JSON.stringify({ id: data.id, message: customMessage.trim() || undefined }) })
     const json = await res.json()
     if (!res.ok) {
       setSending(false)

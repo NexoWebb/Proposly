@@ -197,7 +197,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
                   <div style={{ position: 'absolute', left: '15px', top: '22px', bottom: '22px', width: '2px', background: '#B8D4E8' }} />
                 )}
                 {tl.items.map((item: TimelineItem, ti: number) => (
-                  <div key={item.id} style={{ position: 'relative', marginBottom: ti < tl.items.length - 1 ? '20px' : 0 }}>
+                  <div key={item.id ?? ti} style={{ position: 'relative', marginBottom: ti < tl.items.length - 1 ? '20px' : 0 }}>
                     <div style={{
                       position: 'absolute', left: '-48px', top: '8px',
                       width: '30px', height: '30px', borderRadius: '50%',

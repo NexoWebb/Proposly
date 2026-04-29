@@ -141,7 +141,8 @@ export default function DashboardPage() {
       alert('Esta propuesta no tiene email de cliente. Ábrela en el editor para añadirlo.')
       return
     }
-    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    const { data: { session } } = await supabase.auth.getSession()
+    await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token ?? ''}` }, body: JSON.stringify({ id }) })
     setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'sent', sent_at: new Date().toISOString() } : p))
   }
 

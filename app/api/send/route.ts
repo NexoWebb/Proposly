@@ -1,5 +1,4 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { supabase } from '@/lib/supabase'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
 import DOMPurify from 'isomorphic-dompurify'
@@ -10,11 +9,14 @@ export async function POST(request: NextRequest) {
   const { id, message } = await request.json()
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
-  // Verificar autenticación y ownership
-  const { data: { user } } = await supabase.auth.getUser()
+  // Verificar autenticación con el token JWT del header
+  const token = request.headers.get('Authorization')?.replace('Bearer ', '')
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: { user } } = await supabaseAdmin.auth.getUser(token)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: ownerCheck } = await supabase
+  const { data: ownerCheck } = await supabaseAdmin
     .from('proposals')
     .select('user_id')
     .eq('id', id)

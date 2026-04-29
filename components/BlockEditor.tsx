@@ -336,7 +336,7 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                 />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0', marginBottom: '8px' }}>
                   {block.items.map((item, ii) => (
-                    <div key={item.id} style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
+                    <div key={item.id ?? ii} style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
                       {/* Circle + line column */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                         <div style={{
