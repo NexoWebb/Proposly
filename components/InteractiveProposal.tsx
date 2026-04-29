@@ -11,8 +11,6 @@ interface Props {
 }
 
 export default function InteractiveProposal({ initialBlocks, proposalId, signed }: Props) {
-  // Inicializar estado de selección. Los no opcionales siempre están seleccionados.
-  // Los opcionales empiezan deseleccionados por defecto a menos que ya vengan en true.
   const [blocks, setBlocks] = useState<Block[]>(() => {
     return initialBlocks.map(b => {
       if (b.type === 'services') {
@@ -29,18 +27,17 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
   })
 
   const toggleService = (blockIndex: number, serviceIndex: number) => {
-    if (signed) return // Si está firmada no se puede cambiar
+    if (signed) return
     const newBlocks = [...blocks]
     const block = newBlocks[blockIndex]
     if (block.type === 'services') {
       const svc = block.content[serviceIndex]
-      if (!svc.optional) return // No se puede deseleccionar si no es opcional
+      if (!svc.optional) return
       block.content[serviceIndex] = { ...svc, selected: !svc.selected }
       setBlocks(newBlocks)
     }
   }
 
-  // Calcular el total dinámico basado en lo seleccionado
   const calculateTotal = () => {
     return blocks
       .filter(b => b.type === 'services')
@@ -56,14 +53,14 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
       {blocks.map((block: Block, i: number) => {
         if (block.type === 'header') {
           return (
-            <h2 key={i} style={{ fontSize: '22px', fontWeight: '400', color: '#0F172A', margin: '32px 0 16px', letterSpacing: '-0.3px' }}>
+            <h2 key={i} style={{ fontSize: '22px', fontWeight: '400', color: '#0F2A3D', margin: '32px 0 16px', letterSpacing: '-0.3px' }}>
               {block.content}
             </h2>
           )
         }
         if (block.type === 'text' || (block as Record<string, unknown>).type === 'intro') {
           return (
-            <p key={i} style={{ fontSize: '16px', color: '#334155', lineHeight: '1.8', margin: '0 0 20px', fontStyle: 'italic' }}>
+            <p key={i} style={{ fontSize: '16px', color: '#5A7A8F', lineHeight: '1.8', margin: '0 0 20px', fontStyle: 'italic' }}>
               {(block as Record<string, unknown>).content as string}
             </p>
           )
@@ -73,7 +70,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
             <div key={i} style={{ margin: '24px 0' }}>
               <img src={block.url} alt={block.caption} style={{ width: '100%', borderRadius: '10px', display: 'block' }} />
               {block.caption && (
-                <p style={{ fontSize: '12px', color: '#94A3B8', textAlign: 'center', margin: '8px 0 0', fontFamily: 'sans-serif', fontStyle: 'normal' }}>
+                <p style={{ fontSize: '12px', color: '#5A7A8F', textAlign: 'center', margin: '8px 0 0', fontFamily: 'sans-serif', fontStyle: 'normal' }}>
                   {block.caption}
                 </p>
               )}
@@ -81,7 +78,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
           )
         }
         if (block.type === 'separator') {
-          return <div key={i} style={{ height: '1px', background: '#E2E8F0', margin: '32px 0' }} />
+          return <div key={i} style={{ height: '1px', background: '#B8D4E8', margin: '32px 0' }} />
         }
         if (block.type === 'services') {
           const svcSelectedTotal = block.content
@@ -90,22 +87,22 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
 
           return (
             <div key={i} style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '20px' }}>
+              <p style={{ fontSize: '11px', color: '#5A7A8F', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '20px' }}>
                 Servicios incluidos
               </p>
               {block.content.map((service: Service, si: number) => {
                 const isSelected = service.selected !== false
                 return (
-                  <div key={si} 
+                  <div key={si}
                     onClick={() => toggleService(i, si)}
-                    style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center', 
-                      padding: '16px 12px', 
-                      borderBottom: '1px solid #E2E8F0',
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '16px 12px',
+                      borderBottom: '1px solid #B8D4E8',
                       cursor: service.optional && !signed ? 'pointer' : 'default',
-                      background: service.optional && !signed ? (isSelected ? 'rgba(67, 97, 238, 0.04)' : 'transparent') : 'transparent',
+                      background: service.optional && !signed ? (isSelected ? 'rgba(74, 127, 165, 0.06)' : 'transparent') : 'transparent',
                       borderRadius: '8px',
                       transition: 'background 0.2s',
                       opacity: isSelected ? 1 : 0.5
@@ -113,30 +110,30 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {service.optional && (
-                        <div style={{ 
-                          width: '20px', height: '20px', borderRadius: '4px', 
-                          border: `2px solid ${isSelected ? '#4361EE' : '#CBD5E1'}`,
-                          background: isSelected ? '#4361EE' : 'transparent',
+                        <div style={{
+                          width: '20px', height: '20px', borderRadius: '4px',
+                          border: `2px solid ${isSelected ? '#4A7FA5' : '#B8D4E8'}`,
+                          background: isSelected ? '#4A7FA5' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                           {isSelected && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
                         </div>
                       )}
                       <div>
-                        <span style={{ fontSize: '15px', color: '#1E293B', fontFamily: 'sans-serif', textDecoration: isSelected ? 'none' : 'line-through' }}>
+                        <span style={{ fontSize: '15px', color: '#0F2A3D', fontFamily: 'sans-serif', textDecoration: isSelected ? 'none' : 'line-through' }}>
                           {service.name}
                         </span>
-                        {service.optional && <span style={{ fontSize: '11px', color: '#64748B', marginLeft: '8px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px' }}>Opcional</span>}
+                        {service.optional && <span style={{ fontSize: '11px', color: '#5A7A8F', marginLeft: '8px', background: '#EAF4FB', padding: '2px 6px', borderRadius: '4px' }}>Opcional</span>}
                       </div>
                     </div>
-                    <span style={{ fontSize: '15px', color: '#1E293B', fontWeight: '500', fontFamily: 'sans-serif' }}>
+                    <span style={{ fontSize: '15px', color: '#0F2A3D', fontWeight: '500', fontFamily: 'sans-serif' }}>
                       {Number(service.price).toLocaleString('es-ES')}€
                     </span>
                   </div>
                 )
               })}
-              <div className="proposal-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#1C2B5E', borderRadius: '12px', marginTop: '20px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>Subtotal de sección</span>
+              <div className="proposal-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#4A7FA5', borderRadius: '12px', marginTop: '20px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', fontFamily: 'sans-serif' }}>Subtotal de sección</span>
                 <span style={{ color: '#ffffff', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px' }}>
                   {svcSelectedTotal.toLocaleString('es-ES')}€
                 </span>
@@ -149,7 +146,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
           return (
             <div key={i} style={{ margin: '32px 0' }}>
               {tl.title && (
-                <p style={{ fontSize: '11px', color: '#64748B', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '28px' }}>
+                <p style={{ fontSize: '11px', color: '#5A7A8F', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '28px' }}>
                   {tl.title}
                 </p>
               )}
@@ -169,8 +166,8 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
                         {isLast ? '✓' : ti + 1}
                       </div>
                       <div style={{
-                        background: isLast ? 'rgba(45,122,79,0.06)' : '#fff',
-                        border: `1px solid ${isLast ? 'rgba(45,122,79,0.2)' : '#E2E8F0'}`,
+                        background: isLast ? 'rgba(45,122,79,0.06)' : 'rgba(255,255,255,0.82)',
+                        border: `1px solid ${isLast ? 'rgba(45,122,79,0.2)' : '#B8D4E8'}`,
                         borderRadius: '10px', padding: '14px 16px',
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: item.description ? '6px' : 0 }}>
@@ -198,7 +195,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
       })}
 
       {currentTotal > 0 && blocks.filter(b => b.type === 'services').length > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#0F172A', borderRadius: '12px', margin: '8px 0 32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#0F2A3D', borderRadius: '12px', margin: '8px 0 32px' }}>
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>Total global sin IVA</span>
           <span style={{ color: '#ffffff', fontSize: '26px', fontWeight: '400', letterSpacing: '-0.5px' }}>
             {currentTotal.toLocaleString('es-ES')}€
@@ -206,13 +203,13 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed 
         </div>
       )}
 
-      <div style={{ height: '1px', background: '#E2E8F0', margin: '32px 0' }} />
+      <div style={{ height: '1px', background: '#B8D4E8', margin: '32px 0' }} />
 
-      <AcceptButton 
-        proposalId={proposalId} 
-        signed={signed} 
-        finalTotal={currentTotal} 
-        finalBlocks={blocks} 
+      <AcceptButton
+        proposalId={proposalId}
+        signed={signed}
+        finalTotal={currentTotal}
+        finalBlocks={blocks}
       />
     </div>
   )

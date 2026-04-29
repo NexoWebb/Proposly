@@ -55,7 +55,7 @@ export default async function ProposalPublicPage({
     .reduce((sum, s) => sum + Number(s.price), 0)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFF', fontFamily: "'Georgia', serif" }}>
+    <div style={{ minHeight: '100vh', background: '#D6E8F5', fontFamily: "'Georgia', serif" }}>
       <style>{`
         @media (max-width: 640px) {
           .proposal-header { padding: 32px 20px 28px !important; }
@@ -66,7 +66,7 @@ export default async function ProposalPublicPage({
       `}</style>
 
       {/* Cabecera navy */}
-      <div className="proposal-header" style={{ background: '#1C2B5E', padding: '64px 24px 48px' }}>
+      <div className="proposal-header" style={{ background: '#4A7FA5', padding: '64px 24px 48px' }}>
         <div style={{ maxWidth: '780px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>
             {profile?.logo_url
