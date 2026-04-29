@@ -19,7 +19,11 @@ const accentLight = '#EAF4FB'
 type Proposal = {
   id: string; title: string; client_name: string; client_email: string | null; status: string
   total_amount: number; created_at: string; sent_at: string | null; signed_at: string | null
+  expires_at: string | null
 }
+
+const isExpired = (p: Proposal) =>
+  !!p.expires_at && p.status !== 'signed' && new Date() > new Date(p.expires_at)
 
 const fmt = (d: string | null) => d ? new Date(d).toLocaleString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null
 
@@ -273,6 +277,11 @@ export default function DashboardPage() {
                         {proposal.status !== 'draft' && proposal.sent_at && <span style={{ fontSize: '11px', color: '#4A7FA5' }}>Enviada {fmt(proposal.sent_at)}</span>}
                         {proposal.signed_at && <span style={{ fontSize: '11px', color: '#4A9B6F' }}>Firmada {fmt(proposal.signed_at)}</span>}
                       </div>
+                    )}
+                    {isExpired(proposal) && (
+                      <span style={{ fontSize: '11px', color: '#C0392B', background: '#FDECEA', padding: '3px 10px', borderRadius: '20px', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        Caducada
+                      </span>
                     )}
                     <span style={{ fontSize: '11px', color: statusColor[proposal.status], background: statusBg[proposal.status], padding: '3px 10px', borderRadius: '20px', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {statusLabel[proposal.status]}

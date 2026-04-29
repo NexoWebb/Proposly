@@ -49,6 +49,7 @@ function EditorContent() {
   const [tplIcon, setTplIcon] = useState('📄')
   const [tplColor, setTplColor] = useState('#FAF7F3')
   const [savingTpl, setSavingTpl] = useState(false)
+  const [expiresAt, setExpiresAt] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -78,7 +79,7 @@ function EditorContent() {
 
   const persist = async () => {
     const uid = userId ?? (await supabase.auth.getUser()).data.user?.id
-    return supabase.from('proposals').insert({ user_id: uid, title, client_name: clientName, client_email: clientEmail, blocks, total_amount: computeTotal(blocks), status: 'draft' }).select('id').single()
+    return supabase.from('proposals').insert({ user_id: uid, title, client_name: clientName, client_email: clientEmail, blocks, total_amount: computeTotal(blocks), status: 'draft', expires_at: expiresAt || null }).select('id').single()
   }
 
   const handleSave = async () => { setSaving(true); await persist(); router.push('/dashboard') }
@@ -239,6 +240,10 @@ function EditorContent() {
             <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
             <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
             <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+            <div>
+              <p style={{ fontSize: '10px', color: mid, letterSpacing: '1px', textTransform: 'uppercase', margin: '4px 0 4px' }}>Válida hasta (opcional)</p>
+              <input style={inp} type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
+            </div>
           </div>
 
           {/* Botones de plantilla: distintos si viene de una plantilla o no */}
