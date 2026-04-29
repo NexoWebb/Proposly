@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
 import UserLogo from '@/components/UserLogo'
+import { loadStripe } from '@stripe/stripe-js'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
 const pageBg = '#D6E8F5'
@@ -20,6 +21,16 @@ type Proposal = {
   id: string; title: string; client_name: string; client_email: string | null; status: string
   total_amount: number; created_at: string; sent_at: string | null; signed_at: string | null
   expires_at: string | null
+}
+
+type Subscription = {
+  user_id: string; plan: 'free' | 'pro'; status: string; stripe_customer_id?: string
+}
+
+const countProposalsThisMonth = (proposals: Proposal[]) => {
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  return proposals.filter(p => new Date(p.created_at) >= monthStart).length
 }
 
 const isExpired = (p: Proposal) =>
@@ -55,7 +66,9 @@ export default function DashboardPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const [proposals, setProposals] = useState<Proposal[]>([])
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [filter, setFilter] = useState<FilterKey>('all')
   const [tab, setTab] = useState<Tab>('proposals')
   const [search, setSearch] = useState('')
@@ -70,6 +83,10 @@ export default function DashboardPage() {
       if (!user) { router.push('/login'); return }
       const { data, error } = await supabase.from('proposals').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
       if (!cancelled && !error && data) setProposals(data)
+
+      const { data: sub } = await supabase.from('subscriptions').select('*').eq('user_id', user.id).single()
+      if (!cancelled && sub) setSubscription(sub)
+
       if (!cancelled) setLoading(false)
     }
     load()
@@ -180,6 +197,28 @@ export default function DashboardPage() {
 
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
 
+  const handleUpgradeClick = async () => {
+    setUpgradeLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` }
+      })
+      const { sessionId } = await res.json()
+      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+      await stripe?.redirectToCheckout({ sessionId })
+    } catch (error) {
+      console.error('Upgrade error:', error)
+      alert('Error al procesarse a Stripe')
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
+  const thisMonthCount = countProposalsThisMonth(proposals)
+  const canCreateProposal = !subscription || subscription.plan === 'pro' || thisMonthCount < 3
+
   return (
     <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'sans-serif', color: ink }}>
 
@@ -197,12 +236,24 @@ export default function DashboardPage() {
 
       <div style={{ maxWidth: '860px', margin: '0 auto', padding: isMobile ? '24px 16px' : '48px 24px' }}>
 
+        {subscription?.plan === 'free' && thisMonthCount >= 3 && (
+          <div style={{ background: 'rgba(216, 232, 245, 0.8)', border: '1px solid rgba(74, 127, 165, 0.3)', borderRadius: '16px', padding: '16px 20px', marginBottom: '24px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '500', color: ink, margin: '0 0 4px' }}>Límite de propuestas alcanzado</p>
+              <p style={{ fontSize: '12px', color: mid, margin: 0 }}>Ya has creado 3 propuestas este mes. Actualiza a Plan Pro para propuestas ilimitadas.</p>
+            </div>
+            <button onClick={handleUpgradeClick} disabled={upgradeLoading} style={{ background: '#a8e063', color: ink, border: 'none', padding: '8px 18px', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: upgradeLoading ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: upgradeLoading ? 0.6 : 1 }}>
+              {upgradeLoading ? 'Cargando...' : 'Upgrade a Pro'}
+            </button>
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '32px' }}>
           <div>
             <h1 style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: '400', color: ink, margin: '0 0 4px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Tus propuestas</h1>
             <p style={{ fontSize: '13px', color: mid, margin: 0 }}>Gestiona y haz seguimiento de todas tus propuestas</p>
           </div>
-          <button onClick={() => router.push('/editor')} style={{ background: accent, color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '20px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', flexShrink: 0, width: isMobile ? '100%' : 'auto', boxShadow: '0 4px 12px rgba(74,127,165,0.3)' }}>
+          <button onClick={() => router.push('/editor')} disabled={!canCreateProposal} title={!canCreateProposal ? 'Has alcanzado tu límite de 3 propuestas/mes' : ''} style={{ background: canCreateProposal ? accent : '#ccc', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '20px', fontSize: '14px', fontWeight: '500', cursor: canCreateProposal ? 'pointer' : 'not-allowed', flexShrink: 0, width: isMobile ? '100%' : 'auto', boxShadow: canCreateProposal ? '0 4px 12px rgba(74,127,165,0.3)' : 'none', opacity: canCreateProposal ? 1 : 0.6 }}>
             + Nueva propuesta
           </button>
         </div>

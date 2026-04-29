@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   // 1. Intentar enviar el email
   const { error: emailError } = await resend.emails.send({
-    from: 'Proposly <onboarding@resend.dev>',
+    from: 'Proposly <hola@proposly.es>',
     to: proposal.client_email,
     subject: `${proposal.title} — tu propuesta está lista`,
     html: `

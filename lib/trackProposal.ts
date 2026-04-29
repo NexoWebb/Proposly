@@ -32,7 +32,7 @@ export async function trackProposal(id: string): Promise<void> {
     if (!ownerEmail) return
 
     await resend.emails.send({
-      from: 'Proposly <onboarding@resend.dev>',
+      from: 'Proposly <hola@proposly.es>',
       to: ownerEmail,
       subject: `👀 Tu propuesta está siendo leída ahora`,
       html: `
