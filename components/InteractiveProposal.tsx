@@ -59,16 +59,20 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
       scale: 2,
       useCORS: true,
       backgroundColor: '#D6E8F5',
+      windowWidth: element.scrollWidth,
+      windowHeight: element.scrollHeight,
     })
 
-    const imgData = canvas.toDataURL('image/png')
+    const imgWidth = 210
+    const imgHeight = (canvas.height * imgWidth) / canvas.width
+
     const pdf = new jsPDF({
       orientation: 'portrait',
-      unit: 'px',
-      format: [canvas.width / 2, canvas.height / 2],
+      unit: 'mm',
+      format: 'a4',
     })
 
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2)
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight)
     pdf.save(`propuesta-${proposalId}.pdf`)
   }
 
@@ -237,25 +241,26 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
 
       {/* Acciones excluidas del PDF */}
       <div data-html2canvas-ignore="true" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <button
-          onClick={handleDownloadPDF}
-          style={{
-            alignSelf: 'flex-start',
-            background: 'transparent',
-            border: '1px solid #B8D4E8',
-            borderRadius: '20px',
-            padding: '8px 18px',
-            fontSize: '13px',
-            color: '#4A7FA5',
-            cursor: 'pointer',
-            fontFamily: 'sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          ⬇ Descargar PDF
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={handleDownloadPDF}
+            style={{
+              background: 'transparent',
+              border: '1px solid #B8D4E8',
+              borderRadius: '20px',
+              padding: '8px 18px',
+              fontSize: '13px',
+              color: '#4A7FA5',
+              cursor: 'pointer',
+              fontFamily: 'sans-serif',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            ⬇ Descargar PDF
+          </button>
+        </div>
 
         <AcceptButton
           proposalId={proposalId}
