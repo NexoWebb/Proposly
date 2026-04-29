@@ -141,6 +141,38 @@ export default function DashboardPage() {
     setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'sent', sent_at: new Date().toISOString() } : p))
   }
 
+  const handleDuplicate = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    setLoading(true)
+    const { data: fullProposal } = await supabase.from('proposals').select('blocks, title, client_name, client_email, total_amount').eq('id', id).single()
+    if (!fullProposal) {
+      setLoading(false)
+      return
+    }
+
+    const newBlocks = (fullProposal.blocks || []).map((b: any) => ({ ...b, id: crypto.randomUUID() }))
+    const newTitle = `${fullProposal.title} (Copia)`
+
+    const { data: newProposal } = await supabase.from('proposals').insert({
+      user_id: user.id,
+      title: newTitle,
+      client_name: fullProposal.client_name,
+      client_email: fullProposal.client_email,
+      blocks: newBlocks,
+      total_amount: fullProposal.total_amount,
+      status: 'draft'
+    }).select('id').single()
+
+    if (newProposal) {
+      router.push(`/editor/${newProposal.id}`)
+    } else {
+      setLoading(false)
+    }
+  }
+
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
 
   return (
@@ -255,6 +287,10 @@ export default function DashboardPage() {
                         Pasar a enviada
                       </button>
                     )}
+                    <button onClick={e => handleDuplicate(e, proposal.id)}
+                      style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', color: mid, cursor: 'pointer', flexShrink: 0 }}>
+                      Duplicar
+                    </button>
                     {proposal.status !== 'signed' && (
                       <button onClick={e => handleDelete(e, proposal.id)} style={{ background: 'none', border: `1px solid ${border}`, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', color: '#EF4444', cursor: 'pointer', flexShrink: 0 }}>
                         Eliminar
