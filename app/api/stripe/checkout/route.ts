@@ -3,6 +3,9 @@ import { stripe } from '@/lib/stripe'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
+  console.log('KEY:', process.env.STRIPE_SECRET_KEY?.slice(0, 10))
+  console.log('PRICE:', process.env.STRIPE_PRO_PRICE_ID)
+
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
