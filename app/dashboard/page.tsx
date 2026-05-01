@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
 
-const bg = '#F5F5F3'
-const card = '#ffffff'
-const surface = '#F1EFE8'
+const bg = 'var(--bg-page)'
+const card = 'var(--bg-card)'
+const surface = 'var(--bg-surface)'
 const primary = '#4F6EF7'
 const primaryLight = '#EEF1FE'
-const border = 'rgba(0,0,0,0.1)'
-const ink = '#1A1A1A'
-const mid = '#6B6B6B'
+const border = 'var(--border)'
+const ink = 'var(--text-primary)'
+const mid = 'var(--text-secondary)'
 
 type Proposal = {
   id: string; title: string; client_name: string; client_email: string | null; status: string
@@ -70,6 +70,10 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<FilterKey>('all')
   const [search, setSearch] = useState('')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
+  const [dark, setDark] = useState(false)
+
+  useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
+  const toggleTheme = () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }
 
   useEffect(() => {
     let cancelled = false
@@ -191,6 +195,10 @@ export default function DashboardPage() {
           </div>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button onClick={() => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }}
+            style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
+            {dark ? '☀' : '🌙'}
+          </button>
           <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: `0.5px solid ${border}` }}>Ajustes</a>
           <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: `0.5px solid ${border}`, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
             {isMobile ? 'Salir' : 'Cerrar sesión'}

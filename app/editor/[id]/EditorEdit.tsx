@@ -6,14 +6,14 @@ import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
 import BlockEditor, { Block, computeTotal, normalizeBlocks, mkBlock } from '@/components/BlockEditor'
 
-const bg = '#F5F5F3'
-const card = '#ffffff'
-const surface = '#F1EFE8'
+const bg = 'var(--bg-page)'
+const card = 'var(--bg-card)'
+const surface = 'var(--bg-surface)'
 const primary = '#4F6EF7'
 const primaryLight = '#EEF1FE'
-const border = 'rgba(0,0,0,0.1)'
-const ink = '#1A1A1A'
-const mid = '#6B6B6B'
+const border = 'var(--border)'
+const ink = 'var(--text-primary)'
+const mid = 'var(--text-secondary)'
 
 const inp: React.CSSProperties = {
   width: '100%', background: surface, border: `0.5px solid ${border}`,
@@ -47,6 +47,10 @@ export default function EditorEdit({ id }: { id: string }) {
   const [showSendModal, setShowSendModal] = useState(false)
   const [customMessage, setCustomMessage] = useState('')
   const [copied,       setCopied]       = useState(false)
+  const [dark,         setDark]         = useState(false)
+
+  useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
+  const toggleTheme = () => { const n = !dark; setDark(n); document.documentElement.classList.toggle('dark', n); localStorage.setItem('theme', n ? 'dark' : 'light') }
 
   useEffect(() => {
     const load = async () => {
@@ -171,6 +175,11 @@ export default function EditorEdit({ id }: { id: string }) {
         <span style={{ background: surface, color: mid, borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '500', flexShrink: 0, whiteSpace: 'nowrap' }}>
           {status === 'draft' ? 'Borrador' : status === 'sent' ? 'Enviada' : status === 'opened' ? 'Abierta' : 'Firmada'}
         </span>
+
+        <button onClick={toggleTheme}
+          style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid, flexShrink: 0 }}>
+          {dark ? '☀' : '🌙'}
+        </button>
 
         {!isMobile && (
           <>

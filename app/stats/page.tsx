@@ -6,14 +6,14 @@ import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
-const bg = '#F5F5F3'
-const card = '#ffffff'
-const surface = '#F1EFE8'
+const bg = 'var(--bg-page)'
+const card = 'var(--bg-card)'
+const surface = 'var(--bg-surface)'
 const primary = '#4F6EF7'
 const primaryLight = '#EEF1FE'
-const border = 'rgba(0,0,0,0.1)'
-const ink = '#1A1A1A'
-const mid = '#6B6B6B'
+const border = 'var(--border)'
+const ink = 'var(--text-primary)'
+const mid = 'var(--text-secondary)'
 
 type Proposal = {
   id: string; title: string; client_name: string; status: string
@@ -48,6 +48,9 @@ export default function StatsPage() {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState<Range>('30d')
+  const [dark, setDark] = useState(false)
+
+  useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -65,6 +68,7 @@ export default function StatsPage() {
   }, [])
 
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
+  const toggleTheme = () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }
 
   const cutoff = new Date(Date.now() - rangeDays[range] * 24 * 60 * 60 * 1000)
   const inRange = proposals.filter(p => new Date(p.created_at) >= cutoff)
@@ -150,6 +154,9 @@ export default function StatsPage() {
           </div>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button onClick={toggleTheme} style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
+            {dark ? '☀' : '🌙'}
+          </button>
           <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: `0.5px solid ${border}` }}>Ajustes</a>
           <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: `0.5px solid ${border}`, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
             Cerrar sesión

@@ -26,7 +26,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      {/* eslint-disable-next-line @next/next/no-before-interactive-script-component */}
+      <script dangerouslySetInnerHTML={{ __html: `(function(){try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}})()` }} />
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
