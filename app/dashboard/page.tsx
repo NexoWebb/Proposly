@@ -4,18 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
-import UserLogo from '@/components/UserLogo'
-import { loadStripe } from '@stripe/stripe-js'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
-const pageBg = 'linear-gradient(160deg, #EDF5FC 0%, #F5F9FD 55%, #EAF3FA 100%)'
-const topbar = '#0F2A3D'
-const ink = '#0F2A3D'
-const mid = '#6B8A9E'
-const border = '#E2EBF2'
-const cardBg = '#ffffff'
-const accent = '#4A7FA5'
-const accentLight = '#EAF4FB'
+const bg = '#F5F5F3'
+const card = '#ffffff'
+const surface = '#F1EFE8'
+const primary = '#4F6EF7'
+const primaryLight = '#EEF1FE'
+const border = 'rgba(0,0,0,0.1)'
+const ink = '#1A1A1A'
+const mid = '#6B6B6B'
 
 type Proposal = {
   id: string; title: string; client_name: string; client_email: string | null; status: string
@@ -27,40 +24,41 @@ type Subscription = {
   user_id: string; plan: 'free' | 'pro'; status: string; stripe_customer_id?: string
 }
 
-const countProposalsThisMonth = (proposals: Proposal[]) => {
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+const countThisMonth = (proposals: Proposal[]) => {
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   return proposals.filter(p => new Date(p.created_at) >= monthStart).length
 }
 
 const isExpired = (p: Proposal) =>
   !!p.expires_at && p.status !== 'signed' && new Date() > new Date(p.expires_at)
 
-const fmt = (d: string | null) => d ? new Date(d).toLocaleString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null
+const fmtDate = (d: string | null) =>
+  d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
 
-const statusLabel: Record<string, string> = { draft: 'Borrador', sent: 'Enviada', opened: 'Abierta', signed: 'Firmada' }
-const statusColor: Record<string, string> = { draft: '#94A3B8', sent: '#4A7FA5', opened: '#D4854A', signed: '#4A9B6F' }
-const statusBg: Record<string, string> = { draft: '#F8FAFC', sent: '#EAF4FB', opened: '#FEF3E8', signed: '#E8F5EE' }
-const statusLabelPlural: Record<string, string> = { draft: 'Borradores', sent: 'No abiertas', opened: 'Abiertas', signed: 'Firmadas' }
+const statusCfg: Record<string, { bg: string; color: string; dot: string; label: string }> = {
+  draft:  { bg: '#F1EFE8', color: '#5F5E5A', dot: '#888780', label: 'Borrador' },
+  sent:   { bg: '#E6F1FB', color: '#185FA5', dot: '#378ADD', label: 'Enviada' },
+  opened: { bg: '#FAEEDA', color: '#854F0B', dot: '#BA7517', label: 'Abierta' },
+  signed: { bg: '#EAF3DE', color: '#3B6D11', dot: '#639922', label: 'Firmada' },
+}
 
-function CopyLinkButton({ id }: { id: string }) {
+type FilterKey = 'all' | 'draft' | 'sent' | 'opened' | 'signed'
+
+function CopyLinkBtn({ id }: { id: string }) {
   const [copied, setCopied] = useState(false)
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(`${window.location.origin}/p/${id}`).then(() => {
-      setCopied(true); setTimeout(() => setCopied(false), 2000)
-    })
-  }
   return (
-    <button onClick={handleCopy}
-      style={{ background: copied ? '#E8F5EE' : 'transparent', border: `1px solid ${copied ? '#4A9B6F' : border}`, borderRadius: '7px', padding: '5px 12px', fontSize: '11px', color: copied ? '#4A9B6F' : mid, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', transition: 'all 0.15s', fontWeight: '500' }}>
+    <button
+      onClick={e => {
+        e.stopPropagation()
+        navigator.clipboard.writeText(`${window.location.origin}/p/${id}`).then(() => {
+          setCopied(true); setTimeout(() => setCopied(false), 2000)
+        })
+      }}
+      style={{ background: 'none', border: 'none', fontSize: '12px', color: mid, cursor: 'pointer', padding: '4px 6px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
       {copied ? '✓ Copiado' : 'Copiar link'}
     </button>
   )
 }
-
-type FilterKey = 'all' | 'sent' | 'opened' | 'signed' | 'draft'
-type Tab = 'proposals' | 'stats'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -70,9 +68,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [filter, setFilter] = useState<FilterKey>('all')
-  const [tab, setTab] = useState<Tab>('proposals')
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'status'>('date')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
 
   useEffect(() => {
@@ -92,18 +88,13 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const sent = proposals.filter(p => p.status === 'sent').length
-  const opened = proposals.filter(p => p.status === 'opened').length
-  const signed = proposals.filter(p => p.status === 'signed').length
-  const everSent = proposals.filter(p => p.sent_at !== null).length
-
-  const stats = [
-    { label: 'Total', key: 'all' as FilterKey, value: proposals.length, color: accent },
-    { label: 'Borradores', key: 'draft' as FilterKey, value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8', sub: 'Sin enviar' },
-    { label: 'No abiertas', key: 'sent' as FilterKey, value: sent, color: '#4A7FA5', sub: 'Sin abrir' },
-    { label: 'Abiertas', key: 'opened' as FilterKey, value: opened, color: '#D4854A', sub: 'Sin firmar' },
-    { label: 'Firmadas', key: 'signed' as FilterKey, value: signed, color: '#4A9B6F' },
-  ]
+  const counts = {
+    total: proposals.length,
+    draft: proposals.filter(p => p.status === 'draft').length,
+    sent: proposals.filter(p => p.status === 'sent').length,
+    opened: proposals.filter(p => p.status === 'opened').length,
+    signed: proposals.filter(p => p.status === 'signed').length,
+  }
 
   const filtered = (() => {
     let list = filter === 'all' ? proposals : proposals.filter(p => p.status === filter)
@@ -112,35 +103,11 @@ export default function DashboardPage() {
       list = list.filter(p => p.title.toLowerCase().includes(q) || p.client_name.toLowerCase().includes(q))
     }
     return [...list].sort((a, b) => {
-      const av = sortBy === 'date' ? a.created_at : sortBy === 'amount' ? Number(a.total_amount) : a.status
-      const bv = sortBy === 'date' ? b.created_at : sortBy === 'amount' ? Number(b.total_amount) : b.status
-      if (av < bv) return sortDir === 'asc' ? -1 : 1
-      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      if (a.created_at < b.created_at) return sortDir === 'asc' ? -1 : 1
+      if (a.created_at > b.created_at) return sortDir === 'asc' ? 1 : -1
       return 0
     })
   })()
-
-  const barData = (() => {
-    const months: { mes: string; propuestas: number }[] = []
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(); d.setMonth(d.getMonth() - i)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      months.push({ mes: d.toLocaleDateString('es-ES', { month: 'short' }), propuestas: proposals.filter(p => p.created_at.startsWith(key)).length })
-    }
-    return months
-  })()
-
-  const donutData = [
-    { name: 'Borrador', value: proposals.filter(p => p.status === 'draft').length, color: '#94A3B8' },
-    { name: 'Enviada', value: sent, color: '#4A7FA5' },
-    { name: 'Abierta', value: opened, color: '#D4854A' },
-    { name: 'Firmada', value: signed, color: '#4A9B6F' },
-  ].filter(d => d.value > 0)
-
-  const totalSent = everSent
-  const apertura = totalSent > 0 ? Math.round((opened + signed) / totalSent * 100) : 0
-  const conversion = (opened + signed) > 0 ? Math.round(signed / (opened + signed) * 100) : 0
-  const importeFirmado = proposals.filter(p => p.status === 'signed').reduce((s, p) => s + Number(p.total_amount), 0)
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -166,258 +133,238 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setLoading(true)
-    const { data: fullProposal } = await supabase.from('proposals').select('blocks, title, client_name, client_email, total_amount').eq('id', id).single()
-    if (!fullProposal) { setLoading(false); return }
-    const newBlocks = (fullProposal.blocks || []).map((b: Record<string, unknown>) => ({ ...b, id: crypto.randomUUID() }))
-    const { data: newProposal } = await supabase.from('proposals').insert({
-      user_id: user.id, title: `${fullProposal.title} (Copia)`, client_name: fullProposal.client_name,
-      client_email: fullProposal.client_email, blocks: newBlocks, total_amount: fullProposal.total_amount, status: 'draft'
+    const { data: src } = await supabase.from('proposals').select('blocks, title, client_name, client_email, total_amount').eq('id', id).single()
+    if (!src) { setLoading(false); return }
+    const newBlocks = (src.blocks || []).map((b: Record<string, unknown>) => ({ ...b, id: crypto.randomUUID() }))
+    const { data: created } = await supabase.from('proposals').insert({
+      user_id: user.id, title: `${src.title} (Copia)`, client_name: src.client_name,
+      client_email: src.client_email, blocks: newBlocks, total_amount: src.total_amount, status: 'draft'
     }).select('id').single()
-    if (newProposal) router.push(`/editor/${newProposal.id}`)
+    if (created) router.push(`/editor/${created.id}`)
     else setLoading(false)
   }
 
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
 
-  const handleUpgradeClick = async () => {
+  const handleUpgrade = async () => {
     setUpgradeLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` } })
       const { url } = await res.json()
       if (url) window.location.href = url
-    } catch (error) {
-      console.error('Upgrade error:', error)
-      alert('Error al procesarse a Stripe')
-    } finally {
-      setUpgradeLoading(false)
-    }
+    } catch { alert('Error al procesar el pago') }
+    finally { setUpgradeLoading(false) }
   }
 
-  const thisMonthCount = countProposalsThisMonth(proposals)
-  const canCreateProposal = !subscription || subscription.plan === 'pro' || thisMonthCount < 3
+  const thisMonth = countThisMonth(proposals)
+  const canCreate = !subscription || subscription.plan === 'pro' || thisMonth < 3
+
+  const statCards = [
+    { key: 'total' as FilterKey,  label: 'Total',       value: counts.total,  bar: null,      hint: null,        hero: true },
+    { key: 'draft' as FilterKey,  label: 'Borradores',  value: counts.draft,  bar: '#888780', hint: 'Sin enviar', hero: false },
+    { key: 'sent' as FilterKey,   label: 'No abiertas', value: counts.sent,   bar: '#BA7517', hint: null,        hero: false },
+    { key: 'opened' as FilterKey, label: 'Abiertas',    value: counts.opened, bar: '#378ADD', hint: null,        hero: false },
+    { key: 'signed' as FilterKey, label: 'Firmadas',    value: counts.signed, bar: '#639922', hint: null,        hero: false },
+  ]
+
+  const filterPills = [
+    { key: 'all' as FilterKey,    label: 'Todas' },
+    { key: 'draft' as FilterKey,  label: 'Borrador' },
+    { key: 'sent' as FilterKey,   label: 'Enviadas' },
+    { key: 'opened' as FilterKey, label: 'Abiertas' },
+    { key: 'signed' as FilterKey, label: 'Firmadas' },
+  ]
 
   return (
-    <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'sans-serif', color: ink }}>
+    <div style={{ minHeight: '100vh', background: bg, fontFamily: 'system-ui, -apple-system, sans-serif', color: ink }}>
 
-      <div style={{ background: topbar, padding: `0 ${isMobile ? '16px' : '32px'}`, display: 'flex', alignItems: 'center', height: '64px', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 4px 24px rgba(10,26,41,0.3)' }}>
-        <UserLogo />
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <a href="/settings" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', textDecoration: 'none', padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}>
-            Ajustes
-          </a>
-          <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', padding: '7px 16px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
+      {/* Nav */}
+      <nav style={{ background: card, borderBottom: `0.5px solid ${border}`, height: '52px', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
+        <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '28px' }}>
+          propos<span style={{ color: primary }}>ly</span>
+        </span>
+        {!isMobile && (
+          <div style={{ display: 'flex', gap: '2px' }}>
+            <a href="/dashboard" style={{ fontSize: '13px', color: primary, background: primaryLight, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none', fontWeight: '500' }}>Propuestas</a>
+            <a href="/stats" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Estadísticas</a>
+          </div>
+        )}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: `0.5px solid ${border}` }}>Ajustes</a>
+          <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: `0.5px solid ${border}`, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
             {isMobile ? 'Salir' : 'Cerrar sesión'}
           </button>
         </div>
-      </div>
+      </nav>
 
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: isMobile ? '28px 16px' : '52px 24px' }}>
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '24px 16px' : '36px 24px' }}>
 
-        {subscription?.plan === 'free' && thisMonthCount >= 3 && (
-          <div style={{ background: '#fff', border: '1px solid #F0D9B5', borderLeft: '4px solid #D4854A', borderRadius: '12px', padding: '16px 20px', marginBottom: '28px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '12px', boxShadow: '0 2px 8px rgba(212,133,74,0.1)' }}>
+        {/* Upgrade banner */}
+        {subscription?.plan === 'free' && thisMonth >= 3 && (
+          <div style={{ background: card, border: `0.5px solid ${border}`, borderLeft: '3px solid #BA7517', borderRadius: '12px', padding: '14px 18px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
             <div>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#92400E', margin: '0 0 3px' }}>Límite mensual alcanzado</p>
-              <p style={{ fontSize: '12px', color: '#B45309', margin: 0 }}>Has creado 3 propuestas este mes. Actualiza a Pro para propuestas ilimitadas.</p>
+              <p style={{ fontSize: '13px', fontWeight: '600', color: '#854F0B', margin: '0 0 2px' }}>Límite mensual alcanzado</p>
+              <p style={{ fontSize: '12px', color: mid, margin: 0 }}>3 propuestas este mes. Actualiza a Pro para propuestas ilimitadas.</p>
             </div>
-            <button onClick={handleUpgradeClick} disabled={upgradeLoading} style={{ background: '#D4854A', color: '#fff', border: 'none', padding: '9px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: upgradeLoading ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: upgradeLoading ? 0.6 : 1, boxShadow: '0 4px 12px rgba(212,133,74,0.3)' }}>
+            <button onClick={handleUpgrade} disabled={upgradeLoading}
+              style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: upgradeLoading ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: upgradeLoading ? 0.6 : 1 }}>
               {upgradeLoading ? 'Cargando...' : 'Upgrade a Pro'}
             </button>
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '36px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
           <div>
-            <h1 style={{ fontSize: isMobile ? '22px' : '30px', fontWeight: '400', color: ink, margin: '0 0 6px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Tus propuestas</h1>
-            <p style={{ fontSize: '14px', color: mid, margin: 0 }}>Gestiona y haz seguimiento de todas tus propuestas</p>
+            <h1 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 2px', letterSpacing: '-0.3px' }}>Propuestas</h1>
+            <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{proposals.length} propuestas en total</p>
           </div>
-          <button onClick={() => router.push('/editor')} disabled={!canCreateProposal} title={!canCreateProposal ? 'Has alcanzado tu límite de 3 propuestas/mes' : ''}
-            style={{ background: canCreateProposal ? accent : '#CBD5E1', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: canCreateProposal ? 'pointer' : 'not-allowed', flexShrink: 0, width: isMobile ? '100%' : 'auto', boxShadow: canCreateProposal ? '0 4px 16px rgba(74,127,165,0.35)' : 'none', letterSpacing: '0.2px' }}>
+          <button onClick={() => router.push('/editor')} disabled={!canCreate}
+            style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, whiteSpace: 'nowrap' }}>
             + Nueva propuesta
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '2px', marginBottom: '28px', background: 'rgba(255,255,255,0.7)', borderRadius: '12px', padding: '4px', width: 'fit-content', border: `1px solid ${border}` }}>
-          {(['proposals', 'stats'] as Tab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ background: tab === t ? accent : 'transparent', border: 'none', padding: '8px 22px', borderRadius: '9px', fontSize: '13px', fontWeight: '500', color: tab === t ? '#fff' : mid, cursor: 'pointer', transition: 'all 0.15s', boxShadow: tab === t ? '0 2px 8px rgba(74,127,165,0.25)' : 'none' }}>
-              {t === 'proposals' ? 'Propuestas' : 'Estadísticas'}
-            </button>
+        {/* Stat cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '8px', marginBottom: '16px' }}>
+          {statCards.map(s => (
+            <div key={s.key} onClick={() => setFilter(s.key === filter ? 'all' : s.key)}
+              style={{
+                background: s.hero ? primary : card,
+                border: `0.5px solid ${filter === s.key && !s.hero ? '#C4CEFC' : border}`,
+                borderRadius: '12px',
+                padding: '14px 14px 12px',
+                cursor: 'pointer',
+                outline: filter === s.key && !s.hero ? `2px solid ${primaryLight}` : 'none',
+              }}>
+              {!s.hero && s.bar && (
+                <div style={{ width: '24px', height: '3px', background: s.bar, borderRadius: '2px', marginBottom: '8px' }} />
+              )}
+              <p style={{ fontSize: '11px', color: s.hero ? 'rgba(255,255,255,0.75)' : mid, margin: '0 0 4px', letterSpacing: '0.2px' }}>{s.label}</p>
+              <p style={{ fontSize: '22px', fontWeight: '500', color: s.hero ? '#fff' : ink, margin: '0', lineHeight: 1 }}>{s.value}</p>
+              {s.hint && <p style={{ fontSize: '11px', color: mid, margin: '4px 0 0' }}>{s.hint}</p>}
+            </div>
           ))}
         </div>
 
-        {tab === 'proposals' && (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 5}, 1fr)`, gap: '10px', marginBottom: '24px' }}>
-              {stats.map(stat => (
-                <div key={stat.key} onClick={() => setFilter(stat.key)}
+        {/* Table card */}
+        <div style={{ background: card, border: `0.5px solid ${border}`, borderRadius: '12px', overflow: 'hidden' }}>
+
+          {/* Controls */}
+          <div style={{ padding: '12px 14px', borderBottom: `0.5px solid ${border}`, display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '160px' }}>
+              <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: mid, pointerEvents: 'none' }}>🔍</span>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar propuesta o cliente..."
+                style={{ width: '100%', background: surface, border: 'none', borderRadius: '8px', padding: '7px 10px 7px 28px', fontSize: '12px', color: ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+              {filterPills.map(p => (
+                <button key={p.key} onClick={() => setFilter(p.key)}
                   style={{
-                    background: filter === stat.key ? accent : cardBg,
-                    border: `1px solid ${filter === stat.key ? accent : border}`,
-                    borderLeft: `3px solid ${filter === stat.key ? 'rgba(255,255,255,0.4)' : stat.color}`,
-                    borderRadius: '14px', padding: '18px 16px', cursor: 'pointer', transition: 'all 0.15s',
-                    boxShadow: filter === stat.key ? '0 8px 24px rgba(74,127,165,0.25)' : '0 1px 3px rgba(0,0,0,0.05)',
+                    background: filter === p.key ? primaryLight : 'none',
+                    border: filter === p.key ? '0.5px solid #C4CEFC' : `0.5px solid ${border}`,
+                    color: filter === p.key ? primary : mid,
+                    borderRadius: '20px', padding: '4px 11px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
                   }}>
-                  <p style={{ fontSize: '10px', color: filter === stat.key ? 'rgba(255,255,255,0.6)' : mid, margin: '0 0 10px', letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '600' }}>{stat.label}</p>
-                  <p style={{ fontSize: isMobile ? '28px' : '34px', fontWeight: '300', color: filter === stat.key ? '#fff' : ink, margin: '0 0 4px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>{stat.value}</p>
-                  {stat.sub && <p style={{ fontSize: '10px', color: filter === stat.key ? 'rgba(255,255,255,0.45)' : '#94A3B8', margin: 0 }}>{stat.sub}</p>}
-                </div>
+                  {p.label}
+                </button>
               ))}
             </div>
+            <button onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+              style={{ background: 'none', border: `0.5px solid ${border}`, borderRadius: '8px', padding: '5px 10px', fontSize: '12px', color: mid, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              {sortDir === 'desc' ? '↓' : '↑'} Fecha
+            </button>
+          </div>
 
-            <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ padding: '14px 20px', borderBottom: `1px solid ${border}`, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', alignItems: isMobile ? 'stretch' : 'center', background: '#FAFBFC' }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', pointerEvents: 'none', color: '#94A3B8' }}>🔍</span>
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por título o cliente..."
-                    style={{ width: '100%', background: '#fff', border: `1px solid ${border}`, borderRadius: '8px', padding: '8px 10px 8px 30px', fontSize: '13px', color: ink, outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '500' }}>Ordenar:</span>
-                  {(['date', 'amount', 'status'] as const).map(s => (
-                    <button key={s} onClick={() => { if (sortBy === s) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortBy(s); setSortDir('desc') } }}
-                      style={{ background: sortBy === s ? accentLight : 'transparent', border: `1px solid ${sortBy === s ? accent : border}`, borderRadius: '6px', padding: '5px 10px', fontSize: '11px', color: sortBy === s ? accent : mid, cursor: 'pointer', transition: 'all 0.15s', fontWeight: sortBy === s ? '600' : '400' }}>
-                      {s === 'date' ? 'Fecha' : s === 'amount' ? 'Importe' : 'Estado'}{sortBy === s ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
-                    </button>
-                  ))}
-                  {filter !== 'all' && <button onClick={() => setFilter('all')} style={{ background: 'none', border: 'none', fontSize: '11px', color: accent, cursor: 'pointer', textDecoration: 'underline' }}>Ver todas</button>}
-                </div>
-              </div>
+          {/* Column headers */}
+          {!isMobile && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 90px 90px 190px', padding: '8px 14px', borderBottom: `0.5px solid ${border}`, background: surface }}>
+              {['Propuesta', 'Fecha', 'Estado', 'Importe', 'Acciones'].map((h, i) => (
+                <span key={h} style={{ fontSize: '11px', color: mid, fontWeight: '500', letterSpacing: '0.3px', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</span>
+              ))}
+            </div>
+          )}
 
-              {loading ? (
-                <div style={{ padding: '56px', textAlign: 'center', color: mid, fontSize: '14px' }}>Cargando...</div>
-              ) : filtered.length === 0 ? (
-                <div style={{ padding: '56px 24px', textAlign: 'center' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '22px' }}>📋</div>
-                  <p style={{ color: ink, fontSize: '15px', fontWeight: '500', marginBottom: '6px' }}>{filter === 'all' ? 'Sin propuestas todavía' : `No hay ${statusLabelPlural[filter]?.toLowerCase()}`}</p>
-                  <p style={{ color: mid, fontSize: '13px', marginBottom: '20px' }}>{filter === 'all' ? 'Crea tu primera propuesta para empezar' : ''}</p>
-                  {filter === 'all' && <button onClick={() => router.push('/editor')} style={{ background: accent, color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', boxShadow: '0 4px 12px rgba(74,127,165,0.3)' }}>Crear primera propuesta</button>}
-                </div>
-              ) : (
-                filtered.map((proposal, index) => (
-                  <div key={proposal.id}
-                    style={{
-                      padding: isMobile ? '14px 16px' : '16px 20px',
-                      borderBottom: index < filtered.length - 1 ? `1px solid ${border}` : 'none',
-                      display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer',
-                      transition: 'background 0.1s',
-                      boxShadow: `inset 3px 0 0 ${isExpired(proposal) ? '#EF4444' : statusColor[proposal.status]}`,
-                    }}
-                    onClick={() => router.push(proposal.status === 'signed' ? `/p/${proposal.id}` : `/editor/${proposal.id}`)}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#F8FBFE')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: statusBg[proposal.status], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: `1px solid ${border}` }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor[proposal.status] }} />
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: '14px', fontWeight: '600', color: ink, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proposal.title}</p>
-                      <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{proposal.client_name}</p>
-                    </div>
-
-                    {!isMobile && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '140px' }}>
-                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>Creada {fmt(proposal.created_at)}</span>
-                        {proposal.status !== 'draft' && proposal.sent_at && <span style={{ fontSize: '11px', color: '#4A7FA5' }}>Enviada {fmt(proposal.sent_at)}</span>}
-                        {proposal.signed_at && <span style={{ fontSize: '11px', color: '#4A9B6F' }}>Firmada {fmt(proposal.signed_at)}</span>}
-                      </div>
-                    )}
-
-                    {isExpired(proposal) && (
-                      <span style={{ fontSize: '11px', color: '#DC2626', background: '#FEF2F2', padding: '4px 10px', borderRadius: '6px', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid #FECACA' }}>
-                        Caducada
-                      </span>
-                    )}
-
-                    <span style={{ fontSize: '11px', color: statusColor[proposal.status], background: statusBg[proposal.status], padding: '4px 10px', borderRadius: '6px', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0, border: `1px solid ${statusColor[proposal.status]}30` }}>
-                      {statusLabel[proposal.status]}
-                    </span>
-
-                    <span style={{ fontSize: '15px', fontWeight: '700', color: ink, minWidth: '72px', textAlign: 'right', flexShrink: 0, fontFamily: 'Georgia, serif' }}>
-                      {Number(proposal.total_amount).toLocaleString('es-ES')}€
-                    </span>
-
-                    <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexShrink: 0 }}>
-                      <CopyLinkButton id={proposal.id} />
-                      {proposal.status === 'draft' && (
-                        <button onClick={e => handleMarkAsSent(e, proposal.id)}
-                          style={{ background: '#E8F5EE', border: '1px solid #4A9B6F', borderRadius: '7px', padding: '5px 12px', fontSize: '11px', color: '#4A9B6F', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', fontWeight: '600' }}>
-                          Enviar
-                        </button>
-                      )}
-                      <button onClick={e => { e.stopPropagation(); window.open(`/p/${proposal.id}?export=true`, '_blank') }} title="Descargar PDF"
-                        style={{ background: 'transparent', border: `1px solid ${border}`, borderRadius: '7px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: mid, cursor: 'pointer', flexShrink: 0 }}>
-                        ⬇
-                      </button>
-                      <button onClick={e => handleDuplicate(e, proposal.id)} title="Duplicar propuesta"
-                        style={{ background: 'transparent', border: `1px solid ${border}`, borderRadius: '7px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: mid, cursor: 'pointer', flexShrink: 0 }}>
-                        📄
-                      </button>
-                      {proposal.status !== 'signed' && (
-                        <button onClick={e => handleDelete(e, proposal.id)} title="Eliminar propuesta"
-                          style={{ background: 'transparent', border: '1px solid #FECACA', borderRadius: '7px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#EF4444', cursor: 'pointer', flexShrink: 0 }}>
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
+          {loading ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: mid, fontSize: '13px' }}>Cargando...</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <p style={{ fontSize: '14px', fontWeight: '500', color: ink, margin: '0 0 6px' }}>Sin propuestas</p>
+              <p style={{ fontSize: '12px', color: mid, margin: '0 0 16px' }}>
+                {filter === 'all' ? 'Crea tu primera propuesta para empezar' : 'No hay propuestas con este filtro'}
+              </p>
+              {filter === 'all' && (
+                <button onClick={() => router.push('/editor')}
+                  style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Crear propuesta
+                </button>
               )}
             </div>
-          </>
-        )}
+          ) : filtered.map((p, i) => {
+            const cfg = statusCfg[p.status] || statusCfg.draft
+            return (
+              <div key={p.id}
+                style={{
+                  display: isMobile ? 'flex' : 'grid',
+                  gridTemplateColumns: '1fr 110px 90px 90px 190px',
+                  flexDirection: isMobile ? 'column' : undefined,
+                  gap: isMobile ? '6px' : undefined,
+                  padding: isMobile ? '14px' : '11px 14px',
+                  borderBottom: i < filtered.length - 1 ? `0.5px solid ${border}` : 'none',
+                  cursor: 'pointer',
+                  alignItems: 'center',
+                  transition: 'background 0.1s',
+                }}
+                onClick={() => router.push(p.status === 'signed' ? `/p/${p.id}` : `/editor/${p.id}`)}
+                onMouseEnter={e => (e.currentTarget.style.background = surface)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
 
-        {tab === 'stats' && (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-              {[
-                { label: 'Tasa de apertura', value: `${apertura}%`, sub: `${opened + signed} de ${totalSent}`, color: '#D4854A' },
-                { label: 'Tasa de firma', value: `${conversion}%`, sub: `${signed} de ${opened + signed}`, color: accent },
-                { label: 'Importe firmado', value: `${importeFirmado.toLocaleString('es-ES')}€`, sub: `${signed} propuesta${signed !== 1 ? 's' : ''}`, color: '#4A9B6F', span: isMobile },
-              ].map(k => (
-                <div key={k.label} style={{ background: cardBg, border: `1px solid ${border}`, borderTop: `3px solid ${k.color}`, borderRadius: '14px', padding: '22px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', gridColumn: k.span ? '1 / -1' : 'auto' }}>
-                  <p style={{ fontSize: '10px', color: mid, margin: '0 0 12px', letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '600' }}>{k.label}</p>
-                  <p style={{ fontSize: isMobile ? '30px' : '38px', fontWeight: '300', color: k.color, margin: '0 0 4px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>{k.value}</p>
-                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0 }}>{k.sub}</p>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: '13px', fontWeight: '500', color: ink, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</p>
+                  <p style={{ fontSize: '11px', color: mid, margin: 0 }}>{p.client_name}</p>
                 </div>
-              ))}
-            </div>
 
-            {proposals.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
-                <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '14px', padding: '22px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <p style={{ fontSize: '11px', color: mid, margin: '0 0 20px', letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '600' }}>Propuestas por mes</p>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={barData} barSize={16}>
-                      <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} width={24} />
-                      <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '10px', border: `1px solid ${border}`, background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} cursor={{ fill: accentLight }} />
-                      <Bar dataKey="propuestas" fill={accent} radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <span style={{ fontSize: '12px', color: mid }}>{fmtDate(p.created_at)}</span>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: cfg.bg, color: cfg.color, borderRadius: '20px', padding: '3px 8px', fontSize: '11px', fontWeight: '500' }}>
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                    {cfg.label}
+                  </span>
+                  {isExpired(p) && (
+                    <span style={{ fontSize: '10px', color: '#A32D2D', background: '#FEE', padding: '2px 6px', borderRadius: '10px' }}>Caducada</span>
+                  )}
                 </div>
-                <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '14px', padding: '22px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <p style={{ fontSize: '11px', color: mid, margin: '0 0 20px', letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '600' }}>Distribución por estado</p>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <PieChart>
-                      <Pie data={donutData} cx="50%" cy="50%" innerRadius={48} outerRadius={68} paddingAngle={3} dataKey="value">
-                        {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie>
-                      <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '10px', border: `1px solid ${border}`, background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
-                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+
+                <span style={{ fontSize: '13px', fontWeight: '500', color: ink, textAlign: 'right' }}>
+                  {Number(p.total_amount).toLocaleString('es-ES')}€
+                </span>
+
+                <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <CopyLinkBtn id={p.id} />
+                  {p.status !== 'signed' && (
+                    <button
+                      onClick={e => p.status === 'draft' ? handleMarkAsSent(e, p.id) : (e.stopPropagation(), window.open(`/p/${p.id}`, '_blank'))}
+                      style={{ background: primaryLight, border: 'none', color: primary, borderRadius: '8px', padding: '5px 10px', fontSize: '11px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {p.status === 'draft' ? 'Enviar' : 'Ver'}
+                    </button>
+                  )}
+                  <button onClick={e => handleDuplicate(e, p.id)} title="Duplicar"
+                    style={{ background: 'none', border: `0.5px solid ${border}`, borderRadius: '6px', width: '28px', height: '28px', fontSize: '13px', color: mid, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    ⎘
+                  </button>
+                  {p.status !== 'signed' && (
+                    <button onClick={e => handleDelete(e, p.id)} title="Eliminar"
+                      style={{ background: 'none', border: '0.5px solid rgba(162,45,45,0.25)', borderRadius: '6px', width: '28px', height: '28px', fontSize: '14px', color: '#A32D2D', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      ×
+                    </button>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '14px', padding: '56px 24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <p style={{ color: mid, fontSize: '14px', margin: 0 }}>Crea tu primera propuesta para ver estadísticas</p>
-              </div>
-            )}
-          </>
-        )}
-
+            )
+          })}
+        </div>
       </div>
     </div>
   )
