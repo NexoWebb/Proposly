@@ -118,10 +118,10 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
   const iconBtn = (disabled = false, danger = false): React.CSSProperties => ({
     background: 'none',
     border: `0.5px solid ${danger ? 'rgba(162,45,45,0.3)' : border}`,
-    borderRadius: '6px', width: '26px', height: '26px',
+    borderRadius: '4px', width: '24px', height: '24px',
     cursor: disabled ? 'default' : 'pointer',
     color: danger ? '#A32D2D' : mid,
-    fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
     flexShrink: 0, opacity: disabled ? 0.35 : 1,
   })
 
@@ -135,7 +135,7 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
   )
 
   const BlockHeader = ({ type, i }: { type: Block['type']; i: number }) => (
-    <div style={{ background: surface, borderBottom: `0.5px solid ${border}`, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div style={{ background: surface, borderBottom: `0.5px solid ${border}`, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: DOT[type], flexShrink: 0 }} />
       <span style={{ fontSize: '11px', color: mid, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '500', flex: 1 }}>
         {LABEL[type]}
@@ -160,7 +160,7 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
       </div>
     ) : (
       <button onClick={() => setOpenAdd(after)}
-        style={{ width: '100%', background: 'none', border: `1px dashed ${border}`, borderRadius: '8px', padding: '8px', fontSize: '12px', color: mid, cursor: 'pointer', fontFamily: 'inherit', display: 'block', margin: '3px 0' }}>
+        style={{ width: '100%', background: 'none', border: `0.5px dashed ${border}`, borderRadius: '12px', padding: '12px', fontSize: '12px', color: mid, cursor: 'pointer', fontFamily: 'inherit', display: 'block', margin: '4px 0' }}>
         + Añadir bloque
       </button>
     )
@@ -301,7 +301,7 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                   >+ Añadir línea</button>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: `0.5px solid ${border}`, paddingTop: '10px', gap: '20px', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: mid }}>Total sin IVA</span>
-                    <span style={{ fontSize: '18px', fontWeight: '500', color: ink }}>{total.toLocaleString('es-ES')} €</span>
+                    <span style={{ fontSize: '15px', fontWeight: '500', color: ink }}>{total.toLocaleString('es-ES')} €</span>
                   </div>
                 </div>
               </div>
