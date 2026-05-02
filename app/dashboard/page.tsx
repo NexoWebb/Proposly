@@ -72,8 +72,19 @@ export default function DashboardPage() {
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [dark, setDark] = useState(false)
 
-  useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
-  const toggleTheme = () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains('dark'))
+    if (!localStorage.getItem('theme')) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return
+        supabase.from('profiles').select('theme_preference').eq('user_id', user.id).single().then(({ data }) => {
+          const pref = (data as { theme_preference?: string } | null)?.theme_preference
+          if (pref) { localStorage.setItem('theme', pref); document.documentElement.classList.toggle('dark', pref === 'dark'); setDark(pref === 'dark') }
+        })
+      })
+    }
+  }, [])
+  const toggleTheme = async () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light'); const { data: { user } } = await supabase.auth.getUser(); if (user) supabase.from('profiles').update({ theme_preference: next ? 'dark' : 'light' }).eq('user_id', user.id) }
 
   useEffect(() => {
     let cancelled = false
@@ -196,7 +207,7 @@ export default function DashboardPage() {
           </div>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <button onClick={() => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }}
+          <button onClick={toggleTheme}
             style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
             {dark ? '☀' : '🌙'}
           </button>

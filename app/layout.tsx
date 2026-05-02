@@ -29,7 +29,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       {/* eslint-disable-next-line @next/next/no-before-interactive-script-component */}
-      <script dangerouslySetInnerHTML={{ __html: `(function(){try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}})()` }} />
+      <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()` }} />
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

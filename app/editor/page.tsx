@@ -6,11 +6,11 @@ import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
 import BlockEditor, { Block, computeTotal, mkBlock } from '@/components/BlockEditor'
 
-const pageBg = 'linear-gradient(160deg, #EDF5FC 0%, #F5F9FD 55%, #EAF3FA 100%)'
-const ink = '#0F2A3D'
-const mid = '#6B8A9E'
-const border = '#E2EBF2'
-const cardBg = '#ffffff'
+const ink = 'var(--text-primary)'
+const mid = 'var(--text-secondary)'
+const border = 'var(--border)'
+const cardBg = 'var(--bg-card)'
+const surface = 'var(--bg-surface)'
 const accent = '#4A7FA5'
 const primary = '#4F6EF7'
 
@@ -29,7 +29,7 @@ const PALETTE: { label: string; type: Block['type'] }[] = [
 ]
 
 const inp: React.CSSProperties = {
-  width: '100%', background: '#fff', border: `1px solid ${border}`,
+  width: '100%', background: surface, border: `1px solid ${border}`,
   borderRadius: '8px', padding: '9px 12px', fontSize: '13px',
   color: ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
 }
@@ -149,9 +149,9 @@ function EditorContent() {
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`, gap: '16px', marginBottom: '16px' }}>
         {templates.map(tpl => (
           <button key={tpl.id} onClick={() => startWithTemplate(tpl)}
-            style={{ background: tpl.color, border: `1px solid ${border}`, borderRadius: '16px', padding: '28px 22px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+            style={{ background: 'var(--bg-card)', border: `1px solid ${border}`, borderRadius: '16px', padding: '28px 22px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
             onMouseEnter={e => { const b = e.currentTarget; b.style.borderColor = accent; b.style.boxShadow = '0 8px 24px rgba(74,127,165,0.18)'; b.style.transform = 'translateY(-2px)' }}
-            onMouseLeave={e => { const b = e.currentTarget; b.style.borderColor = border; b.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)'; b.style.transform = 'translateY(0)' }}>
+            onMouseLeave={e => { const b = e.currentTarget; b.style.borderColor = 'var(--border)'; b.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)'; b.style.transform = 'translateY(0)' }}>
             <div style={{ fontSize: '36px', marginBottom: '16px' }}>{tpl.icon}</div>
             <p style={{ fontSize: '14px', fontWeight: '600', color: ink, margin: '0 0 4px' }}>{tpl.name}</p>
             <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{tpl.blocks.length} bloque{tpl.blocks.length !== 1 ? 's' : ''}</p>
@@ -159,9 +159,9 @@ function EditorContent() {
         ))}
       </div>
       <button onClick={startEmpty}
-        style={{ width: '100%', background: 'rgba(255,255,255,0.6)', border: `1.5px dashed ${border}`, borderRadius: '16px', padding: '22px', fontSize: '14px', color: mid, cursor: 'pointer', fontWeight: '500', transition: 'all 0.15s' }}
+        style={{ width: '100%', background: 'var(--bg-card)', border: `1.5px dashed ${border}`, borderRadius: '16px', padding: '22px', fontSize: '14px', color: mid, cursor: 'pointer', fontWeight: '500', transition: 'all 0.15s' }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = accent; e.currentTarget.style.background = '#EAF4FB' }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = mid; e.currentTarget.style.background = 'rgba(255,255,255,0.6)' }}>
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-card)' }}>
         Empezar desde cero →
       </button>
     </div>
@@ -171,7 +171,7 @@ function EditorContent() {
     <>
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,42,61,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ background: '#fff', borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, boxShadow: '0 20px 60px rgba(10,26,41,0.25)' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, boxShadow: '0 20px 60px rgba(10,26,41,0.25)' }}>
             <p style={{ fontSize: '18px', fontWeight: '400', color: ink, margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>Guardar como plantilla</p>
             <p style={{ fontSize: '13px', color: mid, margin: '0 0 24px' }}>Ponle nombre y elige un icono para identificarla</p>
             <input style={{ ...inp, marginBottom: '20px' }} placeholder="Nombre de la plantilla" value={tplName} onChange={e => setTplName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()} autoFocus />
@@ -179,7 +179,7 @@ function EditorContent() {
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
               {ICONS.map(icon => (
                 <button key={icon} onClick={() => setTplIcon(icon)}
-                  style={{ width: '38px', height: '38px', borderRadius: '8px', border: tplIcon === icon ? `2px solid ${accent}` : `1px solid ${border}`, background: tplIcon === icon ? '#EAF4FB' : '#FAFBFC', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  style={{ width: '38px', height: '38px', borderRadius: '8px', border: tplIcon === icon ? `2px solid ${accent}` : `1px solid ${border}`, background: tplIcon === icon ? '#EAF4FB' : 'var(--bg-surface)', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {icon}
                 </button>
               ))}
@@ -193,7 +193,7 @@ function EditorContent() {
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => { setShowModal(false); setTplName('') }}
-                style={{ flex: 1, background: '#F8FAFC', border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', fontWeight: '500' }}>
+                style={{ flex: 1, background: 'var(--bg-surface)', border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', fontWeight: '500' }}>
                 Cancelar
               </button>
               <button onClick={handleSaveTemplate} disabled={!tplName.trim() || savingTpl}
@@ -207,17 +207,17 @@ function EditorContent() {
 
       {showSendModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,42,61,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ background: '#fff', borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '440px', border: `1px solid ${border}`, boxShadow: '0 20px 60px rgba(10,26,41,0.25)' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '440px', border: `1px solid ${border}`, boxShadow: '0 20px 60px rgba(10,26,41,0.25)' }}>
             <p style={{ fontSize: '18px', fontWeight: '400', color: ink, margin: '0 0 6px', fontFamily: 'Georgia, serif' }}>Enviar al cliente</p>
             <p style={{ fontSize: '13px', color: mid, margin: '0 0 20px' }}>Se enviará un email a <strong style={{ color: ink }}>{clientEmail}</strong></p>
             <p style={{ fontSize: '11px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 8px' }}>Mensaje personalizado (opcional)</p>
             <textarea value={customMessage} onChange={e => setCustomMessage(e.target.value)}
               placeholder="Hola, te adjunto la propuesta que comentamos..."
               rows={4}
-              style={{ width: '100%', background: '#fff', border: `1px solid ${border}`, borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: ink, outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box', resize: 'vertical' }} />
+              style={{ width: '100%', background: 'var(--bg-surface)', border: `1px solid ${border}`, borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: ink, outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box', resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
               <button onClick={() => { setShowSendModal(false); setCustomMessage('') }}
-                style={{ flex: 1, background: '#F8FAFC', border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', fontWeight: '500' }}>
+                style={{ flex: 1, background: 'var(--bg-surface)', border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', fontWeight: '500' }}>
                 Cancelar
               </button>
               <button onClick={handleSend} disabled={sending}
@@ -276,9 +276,9 @@ function EditorContent() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
               {PALETTE.map(({ label, type }) => (
                 <button key={type} onClick={() => setBlocks(prev => [...prev, mkBlock(type)])}
-                  style={{ background: '#F5F8FC', border: `1px solid ${border}`, borderRadius: '8px', padding: '8px 6px', fontSize: '12px', color: ink, cursor: 'pointer', fontWeight: '500', textAlign: 'center', transition: 'all 0.12s' }}
+                  style={{ background: 'var(--bg-surface)', border: `1px solid ${border}`, borderRadius: '8px', padding: '8px 6px', fontSize: '12px', color: ink, cursor: 'pointer', fontWeight: '500', textAlign: 'center', transition: 'all 0.12s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = '#EAF4FB'; e.currentTarget.style.color = accent }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.background = '#F5F8FC'; e.currentTarget.style.color = ink }}>
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.color = 'var(--text-primary)' }}>
                   + {label}
                 </button>
               ))}
@@ -324,18 +324,33 @@ function EditorContent() {
 export default function EditorPage() {
   const router = useRouter()
   const [dark, setDark] = useState(false)
-  useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains('dark'))
+    if (!localStorage.getItem('theme')) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return
+        supabase.from('profiles').select('theme_preference').eq('user_id', user.id).single().then(({ data }) => {
+          const pref = (data as { theme_preference?: string } | null)?.theme_preference
+          if (pref) {
+            localStorage.setItem('theme', pref)
+            document.documentElement.classList.toggle('dark', pref === 'dark')
+            setDark(pref === 'dark')
+          }
+        })
+      })
+    }
+  }, [])
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
 
   return (
-    <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <nav style={{ background: 'var(--bg-card, #fff)', borderBottom: '0.5px solid var(--border, #E8EDF2)', height: '52px', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
         <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '20px', color: ink }}>
           propos<span style={{ color: primary }}>ly</span>
         </span>
         <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 10px', borderRadius: '20px', textDecoration: 'none' }}>← Propuestas</a>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <button onClick={() => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }}
+          <button onClick={async () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light'); const { data: { user } } = await supabase.auth.getUser(); if (user) supabase.from('profiles').update({ theme_preference: next ? 'dark' : 'light' }).eq('user_id', user.id) }}
             style={{ fontSize: '14px', background: 'none', border: '0.5px solid var(--border, #E8EDF2)', padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
             {dark ? '☀' : '🌙'}
           </button>
