@@ -27,17 +27,17 @@ const rangeDays: Record<Range, number> = { '7d': 7, '30d': 30, '90d': 90, '12m':
 
 const fmtK = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1).replace('.0', '')}k €` : `${v} €`
 
-function KpiCard({ label, value, delta, hint }: { label: string; value: string; delta?: { text: string; up: boolean } | null; hint?: string }) {
+function KpiCard({ label, value, delta, hint }: { label: string; value: string; delta?: { text: string; positive: boolean } | null; hint?: string }) {
   return (
     <div style={{ background: card, border: `0.5px solid ${border}`, borderRadius: '12px', padding: '16px 18px' }}>
       <p style={{ fontSize: '11px', color: mid, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 10px' }}>{label}</p>
       <p style={{ fontSize: '26px', fontWeight: '500', color: ink, margin: '0 0 4px', lineHeight: 1 }}>{value}</p>
+      {hint && <p style={{ fontSize: '12px', color: mid, margin: delta ? '0 0 3px' : '0' }}>{hint}</p>}
       {delta && (
-        <p style={{ fontSize: '12px', color: delta.up ? '#3B6D11' : '#A32D2D', margin: 0 }}>
-          {delta.up ? '↑' : '↓'} {delta.text}
+        <p style={{ fontSize: '12px', color: delta.positive ? '#3B6D11' : '#A32D2D', margin: 0 }}>
+          {delta.text}
         </p>
       )}
-      {hint && <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{hint}</p>}
     </div>
   )
 }
@@ -85,10 +85,31 @@ export default function StatsPage() {
     const withDates = signed.filter(p => p.signed_at)
     if (!withDates.length) return null
     const avg = withDates.reduce((s, p) => {
-      return s + (new Date(p.signed_at!).getTime() - new Date(p.created_at).getTime())
+      const start = p.sent_at ? new Date(p.sent_at).getTime() : new Date(p.created_at).getTime()
+      return s + (new Date(p.signed_at!).getTime() - start)
     }, 0) / withDates.length
     return Math.round(avg / (1000 * 60 * 60 * 24))
   })()
+
+  // Previous period for delta computation
+  const prevCutoff = new Date(cutoff.getTime() - rangeDays[range] * 24 * 60 * 60 * 1000)
+  const prevInRange = proposals.filter(p => { const d = new Date(p.created_at); return d >= prevCutoff && d < cutoff })
+  const prevSigned = prevInRange.filter(p => p.status === 'signed')
+  const prevEverSent = prevInRange.filter(p => p.sent_at)
+  const prevIngresos = prevSigned.reduce((s, p) => s + Number(p.total_amount), 0)
+  const prevTasaCierre = prevEverSent.length > 0 ? Math.round(prevSigned.length / prevEverSent.length * 100) : null
+  const prevValorMedio = prevInRange.length > 0 ? Math.round(prevInRange.reduce((s, p) => s + Number(p.total_amount), 0) / prevInRange.length) : null
+
+  const mkPctDelta = (cur: number, prev: number | null): { text: string; positive: boolean } | null => {
+    if (!prev) return null
+    const pct = Math.round((cur - prev) / prev * 100)
+    return { text: `${pct >= 0 ? '+' : ''}${pct}% vs periodo anterior`, positive: pct >= 0 }
+  }
+  const ingresosDelta = mkPctDelta(ingresos, prevIngresos || null)
+  const tasaCierreDelta = prevTasaCierre !== null
+    ? (() => { const pp = tasaCierre - prevTasaCierre; return { text: `${pp >= 0 ? '+' : ''}${pp} pp vs periodo anterior`, positive: pp >= 0 } })()
+    : null
+  const valorMedioDelta = mkPctDelta(valorMedio, prevValorMedio)
 
   const barData = (() => {
     const months: { mes: string; firmadas: number; enviadas: number }[] = []
@@ -193,10 +214,10 @@ export default function StatsPage() {
           <>
             {/* KPI row */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-              <KpiCard label="Ingresos cerrados" value={fmtK(ingresos)} hint={`${signed.length} propuesta${signed.length !== 1 ? 's' : ''} firmada${signed.length !== 1 ? 's' : ''}`} />
-              <KpiCard label="Tasa de cierre" value={`${tasaCierre}%`} hint={`${signed.length} de ${everSent.length} enviadas`} />
-              <KpiCard label="Valor medio propuesta" value={fmtK(valorMedio)} hint={`${inRange.length} propuestas`} />
-              <KpiCard label="Tiempo medio a firma" value={avgDays != null ? `${avgDays} días` : '—'} hint={avgDays != null ? 'desde creación' : 'Sin datos'} />
+              <KpiCard label="Ingresos cerrados" value={fmtK(ingresos)} hint={`${signed.length} propuesta${signed.length !== 1 ? 's' : ''} firmada${signed.length !== 1 ? 's' : ''}`} delta={ingresosDelta} />
+              <KpiCard label="Tasa de cierre" value={`${tasaCierre}%`} hint={`${signed.length} de ${everSent.length} enviadas`} delta={tasaCierreDelta} />
+              <KpiCard label="Valor medio propuesta" value={fmtK(valorMedio)} hint={`${inRange.length} propuestas`} delta={valorMedioDelta} />
+              <KpiCard label="Tiempo medio a firma" value={avgDays != null ? `${avgDays} días` : '—'} hint={avgDays != null ? 'desde el envío' : 'Sin datos'} />
             </div>
 
             {/* Row 1: chart + funnel */}

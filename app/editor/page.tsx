@@ -3,17 +3,16 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import UserLogo from '@/components/UserLogo'
 import { useIsMobile } from '@/lib/useIsMobile'
 import BlockEditor, { Block, computeTotal, mkBlock } from '@/components/BlockEditor'
 
 const pageBg = 'linear-gradient(160deg, #EDF5FC 0%, #F5F9FD 55%, #EAF3FA 100%)'
-const topbar = '#0F2A3D'
 const ink = '#0F2A3D'
 const mid = '#6B8A9E'
 const border = '#E2EBF2'
 const cardBg = '#ffffff'
 const accent = '#4A7FA5'
+const primary = '#4F6EF7'
 
 type Step = 'picker' | 'editor'
 type UserTemplate = { id: string; name: string; blocks: Block[]; icon: string; color: string }
@@ -21,10 +20,18 @@ type UserTemplate = { id: string; name: string; blocks: Block[]; icon: string; c
 const ICONS = ['📄','📝','💼','📢','📷','🖥️','🔨','⚡','🎯','🌟','💡','🏆']
 const COLORS = ['#FAF7F3','#F5F0EB','#EAF4FB','#F0FDF4','#FDF2F8','#EFF6FF','#FAFAF9','#FEF9C3']
 
+const PALETTE: { label: string; type: Block['type'] }[] = [
+  { label: 'Encabezado', type: 'header' },
+  { label: 'Texto', type: 'text' },
+  { label: 'Servicios', type: 'services' },
+  { label: 'Imagen', type: 'image' },
+  { label: 'Separador', type: 'separator' },
+]
+
 const inp: React.CSSProperties = {
-  width: '100%', background: '#fff', border: `1px solid #E2EBF2`,
-  borderRadius: '8px', padding: '10px 14px', fontSize: '14px',
-  color: '#0F2A3D', outline: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box',
+  width: '100%', background: '#fff', border: `1px solid ${border}`,
+  borderRadius: '8px', padding: '9px 12px', fontSize: '13px',
+  color: ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
 }
 
 function EditorContent() {
@@ -127,6 +134,7 @@ function EditorContent() {
 
   const canSave = !!title && !saving && !sending
   const canSend = !!title && !!clientEmail && !saving && !sending
+  const total = computeTotal(blocks)
 
   if (loadingTemplates) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mid, fontSize: '14px' }}>Cargando...</div>
@@ -221,17 +229,27 @@ function EditorContent() {
         </div>
       )}
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: isMobile ? '24px 16px 80px' : '48px 40px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: isMobile ? '24px' : '48px', alignItems: 'start' }}>
+      {/* Editor: canvas left | sidebar right */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 80px' : '32px 32px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 240px', gap: isMobile ? '24px' : '32px', alignItems: 'start' }}>
 
-        <div style={{ position: isMobile ? 'static' : 'sticky', top: '80px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Canvas */}
+        <div>
+          <p style={{ fontSize: '11px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 16px' }}>Contenido de la propuesta</p>
+          <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
+        </div>
+
+        {/* Sidebar */}
+        <div style={{ position: isMobile ? 'static' : 'sticky', top: '68px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
           {templates.length > 0 && (
             <button onClick={() => setStep('picker')} style={{ background: 'none', border: 'none', color: mid, fontSize: '13px', cursor: 'pointer', padding: '0 0 4px', textAlign: 'left', fontWeight: '500' }}>
               ← Plantillas
             </button>
           )}
 
-          <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 2px' }}>Datos de la propuesta</p>
+          {/* Client data */}
+          <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 2px' }}>Datos del cliente</p>
             <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
             <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
             <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
@@ -241,57 +259,93 @@ function EditorContent() {
             </div>
           </div>
 
+          {/* Economic summary */}
+          <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '12px', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 10px' }}>Resumen económico</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: '13px', color: mid }}>Total</span>
+              <span style={{ fontSize: '20px', fontWeight: '600', color: ink, fontVariantNumeric: 'tabular-nums' }}>
+                {total.toLocaleString('es-ES')} €
+              </span>
+            </div>
+          </div>
+
+          {/* Block palette */}
+          <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '12px', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 10px' }}>Añadir bloque</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              {PALETTE.map(({ label, type }) => (
+                <button key={type} onClick={() => setBlocks(prev => [...prev, mkBlock(type)])}
+                  style={{ background: '#F5F8FC', border: `1px solid ${border}`, borderRadius: '8px', padding: '8px 6px', fontSize: '12px', color: ink, cursor: 'pointer', fontWeight: '500', textAlign: 'center', transition: 'all 0.12s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = '#EAF4FB'; e.currentTarget.style.color = accent }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.background = '#F5F8FC'; e.currentTarget.style.color = ink }}>
+                  + {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div style={{ height: '1px', background: border, margin: '2px 0' }} />
 
           {activeTpl ? (
             <>
               <button onClick={handleUpdateTemplate} disabled={savingTpl}
-                style={{ background: '#EAF4FB', border: `1px solid ${accent}`, borderRadius: '10px', padding: '11px', fontSize: '13px', color: accent, cursor: 'pointer', fontWeight: '600' }}>
+                style={{ background: '#EAF4FB', border: `1px solid ${accent}`, borderRadius: '10px', padding: '10px', fontSize: '13px', color: accent, cursor: 'pointer', fontWeight: '600' }}>
                 {savingTpl ? 'Actualizando...' : 'Actualizar plantilla'}
               </button>
               <button onClick={handleDeleteTemplate}
-                style={{ background: 'transparent', border: '1px solid #FECACA', borderRadius: '10px', padding: '11px', fontSize: '13px', color: '#EF4444', cursor: 'pointer', fontWeight: '500' }}>
+                style={{ background: 'transparent', border: '1px solid #FECACA', borderRadius: '10px', padding: '10px', fontSize: '13px', color: '#EF4444', cursor: 'pointer', fontWeight: '500' }}>
                 Eliminar plantilla
               </button>
             </>
           ) : (
-            <button onClick={() => setShowModal(true)} style={{ background: '#F8FAFC', border: `1px solid ${border}`, borderRadius: '10px', padding: '11px', fontSize: '13px', color: mid, cursor: 'pointer', fontWeight: '500' }}>
+            <button onClick={() => setShowModal(true)} style={{ background: '#F8FAFC', border: `1px solid ${border}`, borderRadius: '10px', padding: '10px', fontSize: '13px', color: mid, cursor: 'pointer', fontWeight: '500' }}>
               + Guardar como plantilla
             </button>
           )}
 
-          <button onClick={() => router.push('/dashboard')} style={{ background: 'transparent', color: mid, border: `1px solid ${border}`, padding: '11px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+          <button onClick={() => router.push('/dashboard')} style={{ background: 'transparent', color: mid, border: `1px solid ${border}`, padding: '10px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
             Cancelar
           </button>
           <button onClick={handleSave} disabled={!canSave}
-            style={{ background: canSave ? accent : '#E2EBF2', color: canSave ? '#fff' : mid, border: 'none', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: canSave ? 'pointer' : 'default', boxShadow: canSave ? '0 4px 14px rgba(74,127,165,0.35)' : 'none', letterSpacing: '0.2px' }}>
+            style={{ background: canSave ? accent : '#E2EBF2', color: canSave ? '#fff' : mid, border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: canSave ? 'pointer' : 'default', boxShadow: canSave ? '0 4px 14px rgba(74,127,165,0.35)' : 'none' }}>
             {saving ? 'Guardando...' : 'Guardar borrador'}
           </button>
           <button onClick={() => setShowSendModal(true)} disabled={!canSend}
-            style={{ background: canSend ? '#4A9B6F' : '#E2EBF2', color: canSend ? '#fff' : mid, border: 'none', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: canSend ? 'pointer' : 'default', boxShadow: canSend ? '0 4px 14px rgba(74,155,111,0.35)' : 'none', letterSpacing: '0.2px' }}>
+            style={{ background: canSend ? '#4A9B6F' : '#E2EBF2', color: canSend ? '#fff' : mid, border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: canSend ? 'pointer' : 'default', boxShadow: canSend ? '0 4px 14px rgba(74,155,111,0.35)' : 'none' }}>
             {sending ? 'Enviando...' : '✉ Enviar al cliente'}
           </button>
         </div>
-
-        <div>
-          <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 20px' }}>Contenido de la propuesta</p>
-          <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
-        </div>
-
       </div>
     </>
   )
 }
 
 export default function EditorPage() {
+  const router = useRouter()
+  const [dark, setDark] = useState(false)
+  useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
+  const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
+
   return (
-    <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: topbar, padding: '0 24px', display: 'flex', alignItems: 'center', height: '64px', flexShrink: 0, boxShadow: '0 4px 24px rgba(10,26,41,0.3)' }}>
-        <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}>← Dashboard</a>
-        <div style={{ margin: '0 auto' }}><UserLogo /></div>
-        <div style={{ width: '80px' }} />
-      </div>
-      <Suspense fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mid, fontSize: '14px' }}>Cargando...</div>}>
+    <div style={{ minHeight: '100vh', background: pageBg, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <nav style={{ background: 'var(--bg-card, #fff)', borderBottom: '0.5px solid var(--border, #E8EDF2)', height: '52px', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
+        <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '20px', color: ink }}>
+          propos<span style={{ color: primary }}>ly</span>
+        </span>
+        <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 10px', borderRadius: '20px', textDecoration: 'none' }}>← Propuestas</a>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button onClick={() => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }}
+            style={{ fontSize: '14px', background: 'none', border: '0.5px solid var(--border, #E8EDF2)', padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
+            {dark ? '☀' : '🌙'}
+          </button>
+          <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: '0.5px solid var(--border, #E8EDF2)' }}>Ajustes</a>
+          <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: '0.5px solid var(--border, #E8EDF2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+            Cerrar sesión
+          </button>
+        </div>
+      </nav>
+      <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px', color: mid, fontSize: '14px' }}>Cargando...</div>}>
         <EditorContent />
       </Suspense>
     </div>
