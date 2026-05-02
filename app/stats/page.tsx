@@ -202,12 +202,6 @@ export default function StatsPage() {
         <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '28px' }}>
           propos<span style={{ color: primary }}>ly</span>
         </span>
-        {!isMobile && (
-          <div style={{ display: 'flex', gap: '2px' }}>
-            <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Propuestas</a>
-            <a href="/stats" style={{ fontSize: '13px', color: primary, background: primaryLight, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none', fontWeight: '500' }}>Estadísticas</a>
-          </div>
-        )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
           <button onClick={toggleTheme} style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
             {dark ? '☀' : '🌙'}
@@ -220,6 +214,12 @@ export default function StatsPage() {
       </nav>
 
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '24px 14px' : '36px 24px' }}>
+
+        {/* Page tabs */}
+        <div style={{ display: 'flex', gap: '2px', marginBottom: '24px' }}>
+          <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Propuestas</a>
+          <a href="/stats" style={{ fontSize: '13px', color: primary, background: primaryLight, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none', fontWeight: '500' }}>Estadísticas</a>
+        </div>
 
         {/* Page header + range pills */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' }}>

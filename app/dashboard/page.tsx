@@ -200,12 +200,6 @@ export default function DashboardPage() {
         <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '28px' }}>
           propos<span style={{ color: primary }}>ly</span>
         </span>
-        {!isMobile && (
-          <div style={{ display: 'flex', gap: '2px' }}>
-            <a href="/dashboard" style={{ fontSize: '13px', color: primary, background: primaryLight, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none', fontWeight: '500' }}>Propuestas</a>
-            <a href="/stats" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Estadísticas</a>
-          </div>
-        )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
           <button onClick={toggleTheme}
             style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
@@ -219,6 +213,12 @@ export default function DashboardPage() {
       </nav>
 
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '24px 16px' : '36px 24px' }}>
+
+        {/* Page tabs */}
+        <div style={{ display: 'flex', gap: '2px', marginBottom: '24px' }}>
+          <a href="/dashboard" style={{ fontSize: '13px', color: primary, background: primaryLight, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none', fontWeight: '500' }}>Propuestas</a>
+          <a href="/stats" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Estadísticas</a>
+        </div>
 
         {/* Upgrade banner */}
         {subscription?.plan === 'free' && thisMonth >= 3 && (
