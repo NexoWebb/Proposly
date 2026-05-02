@@ -134,6 +134,7 @@ export default function DashboardPage() {
 
   const handleDuplicate = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
+    if (!canCreate) { handleUpgrade(); return }
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setLoading(true)
@@ -162,7 +163,7 @@ export default function DashboardPage() {
   }
 
   const thisMonth = countThisMonth(proposals)
-  const canCreate = !subscription || subscription.plan === 'pro' || thisMonth < 3
+  const canCreate = subscription?.plan === 'pro' || thisMonth < 3
 
   const statCards = [
     { key: 'total' as FilterKey,  label: 'Total',       value: counts.total,  bar: null,      hint: null,        hero: true },
@@ -228,9 +229,9 @@ export default function DashboardPage() {
             <h1 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 2px', letterSpacing: '-0.3px' }}>Propuestas</h1>
             <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{proposals.length} propuestas en total</p>
           </div>
-          <button onClick={() => router.push('/editor')} disabled={!canCreate}
-            style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, whiteSpace: 'nowrap' }}>
-            + Nueva propuesta
+          <button onClick={() => canCreate ? router.push('/editor') : handleUpgrade()} disabled={upgradeLoading}
+            style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap', opacity: upgradeLoading ? 0.6 : 1 }}>
+            {upgradeLoading ? 'Cargando...' : '+ Nueva propuesta'}
           </button>
         </div>
 
@@ -303,7 +304,7 @@ export default function DashboardPage() {
                 {filter === 'all' ? 'Crea tu primera propuesta para empezar' : 'No hay propuestas con este filtro'}
               </p>
               {filter === 'all' && (
-                <button onClick={() => router.push('/editor')}
+                <button onClick={() => canCreate ? router.push('/editor') : handleUpgrade()} disabled={upgradeLoading}
                   style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Crear propuesta
                 </button>
