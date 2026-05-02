@@ -18,7 +18,7 @@ const mid = 'var(--text-secondary)'
 type Proposal = {
   id: string; title: string; client_name: string; status: string
   total_amount: number; created_at: string; sent_at: string | null
-  signed_at: string | null; opened_at: string | null
+  signed_at: string | null; opened_at: string | null; expires_at: string | null
 }
 
 type Range = '7d' | '30d' | '90d' | '12m'
@@ -58,7 +58,7 @@ export default function StatsPage() {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data, error } = await supabase.from('proposals').select('id,title,client_name,status,total_amount,created_at,sent_at,signed_at,opened_at').eq('user_id', user.id)
+      const { data, error } = await supabase.from('proposals').select('id,title,client_name,status,total_amount,created_at,sent_at,signed_at,opened_at,expires_at').eq('user_id', user.id)
       if (!cancelled && !error && data) setProposals(data)
       if (!cancelled) setLoading(false)
     }
@@ -70,47 +70,70 @@ export default function StatsPage() {
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
   const toggleTheme = () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light') }
 
-  const cutoff = new Date(Date.now() - rangeDays[range] * 24 * 60 * 60 * 1000)
+  /* ── Period slicing ── */
+  const cutoff  = new Date(Date.now() - rangeDays[range] * 24 * 60 * 60 * 1000)
   const inRange = proposals.filter(p => new Date(p.created_at) >= cutoff)
 
-  const signed = inRange.filter(p => p.status === 'signed')
-  const everSent = inRange.filter(p => p.sent_at)
-  const everOpened = inRange.filter(p => p.opened_at || p.status === 'opened' || p.status === 'signed')
+  /* ── Status groups (DB values: draft | sent | opened | signed) ── */
+  // "Firmadas"  = signed
+  // "Enviadas"  = ever left draft = sent | opened | signed
+  // "Abiertas"  = opened by client = opened | signed (signed was also opened)
+  // "Expiradas" = sent past validity, not signed
+  const firmadas  = inRange.filter(p => p.status === 'signed')
+  const enviadas  = inRange.filter(p => p.status === 'sent' || p.status === 'opened' || p.status === 'signed')
+  const abiertas  = inRange.filter(p => p.status === 'opened' || p.status === 'signed')
+  const expiradas = inRange.filter(p =>
+    p.status !== 'signed' && p.status !== 'draft' &&
+    !!p.expires_at && new Date() > new Date(p.expires_at)
+  )
 
-  const ingresos = signed.reduce((s, p) => s + Number(p.total_amount), 0)
-  const tasaCierre = everSent.length > 0 ? Math.round(signed.length / everSent.length * 100) : 0
-  const valorMedio = inRange.length > 0 ? Math.round(inRange.reduce((s, p) => s + Number(p.total_amount), 0) / inRange.length) : 0
+  /* ── KPI 1: Ingresos cerrados ── */
+  const ingresos = firmadas.reduce((s, p) => s + Number(p.total_amount), 0)
 
+  /* ── KPI 2: Tasa de cierre = firmadas / enviadas (never > 100%) ── */
+  const tasaCierre = enviadas.length > 0 ? Math.round(firmadas.length / enviadas.length * 100) : null
+
+  /* ── KPI 3: Valor medio (firmadas only) ── */
+  const valorMedio = firmadas.length > 0
+    ? Math.round(firmadas.reduce((s, p) => s + Number(p.total_amount), 0) / firmadas.length)
+    : null
+
+  /* ── KPI 4: Tiempo medio sent_at → signed_at (firmadas with both dates) ── */
   const avgDays = (() => {
-    const withDates = signed.filter(p => p.signed_at)
-    if (!withDates.length) return null
-    const avg = withDates.reduce((s, p) => {
-      const start = p.sent_at ? new Date(p.sent_at).getTime() : new Date(p.created_at).getTime()
-      return s + (new Date(p.signed_at!).getTime() - start)
-    }, 0) / withDates.length
+    const withBoth = firmadas.filter(p => p.sent_at && p.signed_at)
+    if (!withBoth.length) return null
+    const avg = withBoth.reduce((s, p) =>
+      s + (new Date(p.signed_at!).getTime() - new Date(p.sent_at!).getTime()), 0
+    ) / withBoth.length
     return Math.round(avg / (1000 * 60 * 60 * 24))
   })()
 
-  // Previous period for delta computation
-  const prevCutoff = new Date(cutoff.getTime() - rangeDays[range] * 24 * 60 * 60 * 1000)
-  const prevInRange = proposals.filter(p => { const d = new Date(p.created_at); return d >= prevCutoff && d < cutoff })
-  const prevSigned = prevInRange.filter(p => p.status === 'signed')
-  const prevEverSent = prevInRange.filter(p => p.sent_at)
-  const prevIngresos = prevSigned.reduce((s, p) => s + Number(p.total_amount), 0)
-  const prevTasaCierre = prevEverSent.length > 0 ? Math.round(prevSigned.length / prevEverSent.length * 100) : null
-  const prevValorMedio = prevInRange.length > 0 ? Math.round(prevInRange.reduce((s, p) => s + Number(p.total_amount), 0) / prevInRange.length) : null
+  /* ── Previous period (same length, immediately before cutoff) ── */
+  const prevCutoff   = new Date(cutoff.getTime() - rangeDays[range] * 24 * 60 * 60 * 1000)
+  const prevInRange  = proposals.filter(p => { const d = new Date(p.created_at); return d >= prevCutoff && d < cutoff })
+  const prevFirmadas = prevInRange.filter(p => p.status === 'signed')
+  const prevEnviadas = prevInRange.filter(p => p.status === 'sent' || p.status === 'opened' || p.status === 'signed')
 
+  const prevIngresos   = prevFirmadas.reduce((s, p) => s + Number(p.total_amount), 0)
+  const prevTasaCierre = prevEnviadas.length > 0 ? Math.round(prevFirmadas.length / prevEnviadas.length * 100) : null
+  const prevValorMedio = prevFirmadas.length > 0
+    ? Math.round(prevFirmadas.reduce((s, p) => s + Number(p.total_amount), 0) / prevFirmadas.length)
+    : null
+
+  /* ── Delta helpers ── */
   const mkPctDelta = (cur: number, prev: number | null): { text: string; positive: boolean } | null => {
-    if (!prev) return null
+    if (prev === null || prev === 0) return null
     const pct = Math.round((cur - prev) / prev * 100)
     return { text: `${pct >= 0 ? '+' : ''}${pct}% vs periodo anterior`, positive: pct >= 0 }
   }
-  const ingresosDelta = mkPctDelta(ingresos, prevIngresos || null)
-  const tasaCierreDelta = prevTasaCierre !== null
+
+  const ingresosDelta   = mkPctDelta(ingresos, prevIngresos || null)
+  const tasaCierreDelta = tasaCierre !== null && prevTasaCierre !== null
     ? (() => { const pp = tasaCierre - prevTasaCierre; return { text: `${pp >= 0 ? '+' : ''}${pp} pp vs periodo anterior`, positive: pp >= 0 } })()
     : null
-  const valorMedioDelta = mkPctDelta(valorMedio, prevValorMedio)
+  const valorMedioDelta = valorMedio !== null ? mkPctDelta(valorMedio, prevValorMedio) : null
 
+  /* ── Bar chart (last 6 months, full dataset) ── */
   const barData = (() => {
     const months: { mes: string; firmadas: number; enviadas: number }[] = []
     for (let i = 5; i >= 0; i--) {
@@ -119,23 +142,27 @@ export default function StatsPage() {
       const label = d.toLocaleDateString('es-ES', { month: 'short' })
       months.push({
         mes: label,
-        firmadas: proposals.filter(p => p.status === 'signed' && p.signed_at?.startsWith(key))
+        firmadas: proposals
+          .filter(p => p.status === 'signed' && p.signed_at?.startsWith(key))
           .reduce((s, p) => s + Number(p.total_amount), 0),
-        enviadas: proposals.filter(p => p.sent_at?.startsWith(key))
+        enviadas: proposals
+          .filter(p => (p.status === 'sent' || p.status === 'opened' || p.status === 'signed') && p.sent_at?.startsWith(key))
           .reduce((s, p) => s + Number(p.total_amount), 0),
       })
     }
     return months
   })()
 
-  const total = inRange.length || 1
+  /* ── Funnel (base = proposals created in period) ── */
+  const n = inRange.length
   const funnelData = [
-    { label: 'Creadas',  pct: 100, color: '#4F6EF7' },
-    { label: 'Enviadas', pct: Math.round(everSent.length / total * 100), color: '#7F77DD' },
-    { label: 'Abiertas', pct: Math.round(everOpened.length / total * 100), color: '#85B7EB' },
-    { label: 'Firmadas', pct: Math.round(signed.length / total * 100), color: '#C0DD97' },
+    { label: 'Creadas',  count: n,              pct: 100,                                                color: '#4F6EF7' },
+    { label: 'Enviadas', count: enviadas.length, pct: n > 0 ? Math.round(enviadas.length / n * 100) : 0, color: '#7F77DD' },
+    { label: 'Abiertas', count: abiertas.length, pct: n > 0 ? Math.round(abiertas.length / n * 100) : 0, color: '#85B7EB' },
+    { label: 'Firmadas', count: firmadas.length, pct: n > 0 ? Math.round(firmadas.length / n * 100) : 0, color: '#C0DD97' },
   ]
 
+  /* ── Top clients (all-time) ── */
   const topClients = (() => {
     const map = new Map<string, { count: number; amount: number }>()
     proposals.forEach(p => {
@@ -150,12 +177,19 @@ export default function StatsPage() {
 
   const maxClientAmt = topClients[0]?.amount || 1
 
-  const clientMetrics = [
-    { label: 'Tasa de apertura', value: `${everSent.length > 0 ? Math.round(everOpened.length / everSent.length * 100) : 0}%`, pct: everSent.length > 0 ? Math.round(everOpened.length / everSent.length * 100) : 0, accent: false },
-    { label: 'Tasa de firma',    value: `${tasaCierre}%`, pct: tasaCierre, accent: false },
-    { label: 'Valor medio',      value: fmtK(valorMedio), pct: Math.min(100, Math.round(valorMedio / 10000 * 100)), accent: false },
-    { label: 'Tiempo a firma',   value: avgDays != null ? `${avgDays}d` : '—', pct: avgDays != null ? Math.min(100, Math.round(100 - avgDays)) : 0, accent: false },
-    { label: 'Propuestas expiradas', value: `${proposals.filter(p => p.status !== 'signed' && p.status !== 'draft').length}`, pct: Math.round(proposals.filter(p => p.status !== 'signed' && p.status !== 'draft').length / (proposals.length || 1) * 100), accent: true },
+  /* ── Client behavior ── */
+  const tasaApertura = enviadas.length > 0 ? Math.round(abiertas.length / enviadas.length * 100) : null
+
+  // Rows with progress bar
+  const barMetrics = [
+    { label: 'Tasa de apertura', value: tasaApertura !== null ? `${tasaApertura}%` : '—', pct: tasaApertura ?? 0 },
+    { label: 'Tasa de firma',    value: tasaCierre   !== null ? `${tasaCierre}%`   : '—', pct: tasaCierre ?? 0 },
+  ]
+  // Plain label + value rows (no bar)
+  const plainMetrics = [
+    { label: 'Valor medio (firmadas)', value: valorMedio !== null ? fmtK(valorMedio) : '—' },
+    { label: 'Tiempo a firma',         value: avgDays    !== null ? `${avgDays} días` : '—' },
+    { label: 'Propuestas expiradas',   value: `${expiradas.length}` },
   ]
 
   const ranges: Range[] = ['7d', '30d', '90d', '12m']
@@ -214,10 +248,29 @@ export default function StatsPage() {
           <>
             {/* KPI row */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-              <KpiCard label="Ingresos cerrados" value={fmtK(ingresos)} hint={`${signed.length} propuesta${signed.length !== 1 ? 's' : ''} firmada${signed.length !== 1 ? 's' : ''}`} delta={ingresosDelta} />
-              <KpiCard label="Tasa de cierre" value={`${tasaCierre}%`} hint={`${signed.length} de ${everSent.length} enviadas`} delta={tasaCierreDelta} />
-              <KpiCard label="Valor medio propuesta" value={fmtK(valorMedio)} hint={`${inRange.length} propuestas`} delta={valorMedioDelta} />
-              <KpiCard label="Tiempo medio a firma" value={avgDays != null ? `${avgDays} días` : '—'} hint={avgDays != null ? 'desde el envío' : 'Sin datos'} />
+              <KpiCard
+                label="Ingresos cerrados"
+                value={fmtK(ingresos)}
+                hint={`${firmadas.length} propuesta${firmadas.length !== 1 ? 's' : ''} firmada${firmadas.length !== 1 ? 's' : ''}`}
+                delta={ingresosDelta}
+              />
+              <KpiCard
+                label="Tasa de cierre"
+                value={tasaCierre !== null ? `${tasaCierre}%` : '—'}
+                hint={tasaCierre !== null ? `${firmadas.length} de ${enviadas.length} enviadas` : 'Sin datos'}
+                delta={tasaCierreDelta}
+              />
+              <KpiCard
+                label="Valor medio propuesta"
+                value={valorMedio !== null ? fmtK(valorMedio) : '—'}
+                hint="sobre propuestas firmadas"
+                delta={valorMedioDelta}
+              />
+              <KpiCard
+                label="Tiempo medio a firma"
+                value={avgDays !== null ? `${avgDays} días` : '—'}
+                hint="desde el envío"
+              />
             </div>
 
             {/* Row 1: chart + funnel */}
@@ -254,7 +307,7 @@ export default function StatsPage() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Funnel */}
+              {/* Funnel — count inside bar, percentage outside */}
               <div style={{ background: card, border: `0.5px solid ${border}`, borderRadius: '12px', padding: '18px 20px' }}>
                 <p style={{ fontSize: '13px', fontWeight: '500', color: ink, margin: '0 0 16px' }}>Embudo de propuestas</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -265,7 +318,11 @@ export default function StatsPage() {
                         <span style={{ fontSize: '12px', fontWeight: '500', color: ink }}>{f.pct}%</span>
                       </div>
                       <div style={{ height: '28px', background: surface, borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${f.pct}%`, background: f.color, borderRadius: '4px', transition: 'width 0.6s ease' }} />
+                        <div style={{ height: '100%', width: `${f.pct}%`, background: f.color, borderRadius: '4px', transition: 'width 0.6s ease', display: 'flex', alignItems: 'center', paddingLeft: f.count > 0 ? '8px' : 0, boxSizing: 'border-box' }}>
+                          {f.count > 0 && (
+                            <span style={{ fontSize: '11px', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap' }}>{f.count}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -280,7 +337,9 @@ export default function StatsPage() {
               <div style={{ background: card, border: `0.5px solid ${border}`, borderRadius: '12px', padding: '18px 20px' }}>
                 <p style={{ fontSize: '13px', fontWeight: '500', color: ink, margin: '0 0 14px' }}>Top clientes</p>
                 {topClients.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: mid, margin: 0 }}>Sin datos todavía</p>
+                  <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p style={{ fontSize: '12px', color: mid }}>Crea propuestas para ver tus mejores clientes</p>
+                  </div>
                 ) : topClients.map((c, i) => (
                   <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: i < topClients.length - 1 ? `0.5px solid ${border}` : 'none' }}>
                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -295,31 +354,38 @@ export default function StatsPage() {
                     <span style={{ fontSize: '13px', fontWeight: '500', color: ink, flexShrink: 0 }}>{fmtK(c.amount)}</span>
                   </div>
                 ))}
-                {topClients.length === 0 && (
-                  <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <p style={{ fontSize: '12px', color: mid }}>Crea propuestas para ver tus mejores clientes</p>
-                  </div>
-                )}
               </div>
 
               {/* Client behavior */}
               <div style={{ background: card, border: `0.5px solid ${border}`, borderRadius: '12px', padding: '18px 20px' }}>
                 <p style={{ fontSize: '13px', fontWeight: '500', color: ink, margin: '0 0 14px' }}>Comportamiento del cliente</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {clientMetrics.map(m => (
+
+                  {/* Tasa de apertura + Tasa de firma — with progress bar */}
+                  {barMetrics.map(m => (
                     <div key={m.label}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                         <span style={{ fontSize: '12px', color: mid }}>{m.label}</span>
                         <span style={{ fontSize: '12px', fontWeight: '500', color: ink }}>{m.value}</span>
                       </div>
                       <div style={{ height: '4px', background: surface, borderRadius: '2px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, m.pct))}%`, background: m.accent ? '#E24B4A' : primary, borderRadius: '2px', transition: 'width 0.6s ease' }} />
+                        <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, m.pct))}%`, background: primary, borderRadius: '2px', transition: 'width 0.6s ease' }} />
                       </div>
+                    </div>
+                  ))}
+
+                  <div style={{ height: '0.5px', background: border }} />
+
+                  {/* Valor medio, Tiempo a firma, Expiradas — plain rows */}
+                  {plainMetrics.map(m => (
+                    <div key={m.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: mid }}>{m.label}</span>
+                      <span style={{ fontSize: '12px', fontWeight: '500', color: ink }}>{m.value}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Client breakdown by amount */}
+                {/* Client distribution */}
                 {topClients.length > 0 && (
                   <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: `0.5px solid ${border}` }}>
                     <p style={{ fontSize: '11px', color: mid, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 10px' }}>Distribución de clientes</p>
