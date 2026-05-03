@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
-import BlockEditor, { Block, computeTotal, mkBlock } from '@/components/BlockEditor'
+import BlockEditor, { Block, computeTotal, computeTotalWithOptionals, mkBlock } from '@/components/BlockEditor'
 
 const ink = 'var(--text-primary)'
 const mid = 'var(--text-secondary)'
@@ -137,6 +137,8 @@ function EditorContent() {
   const canSave = !!title && !saving && !sending
   const canSend = !!title && !!clientEmail && !saving && !sending
   const total = computeTotal(blocks)
+  const totalWithOpts = computeTotalWithOptionals(blocks)
+  const hasOptionals = totalWithOpts > total
 
   if (loadingTemplates) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mid, fontSize: '14px' }}>Cargando...</div>
@@ -290,12 +292,20 @@ function EditorContent() {
           {/* Economic summary */}
           <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '12px', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 10px' }}>Resumen económico</p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: '13px', color: mid }}>Total</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: hasOptionals ? '6px' : 0 }}>
+              <span style={{ fontSize: '13px', color: mid }}>Total base</span>
               <span style={{ fontSize: '20px', fontWeight: '600', color: ink, fontVariantNumeric: 'tabular-nums' }}>
                 {total.toLocaleString('es-ES')} €
               </span>
             </div>
+            {hasOptionals && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '11px', color: mid }}>Con opcionales</span>
+                <span style={{ fontSize: '14px', color: mid, fontVariantNumeric: 'tabular-nums' }}>
+                  {totalWithOpts.toLocaleString('es-ES')} €
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Block palette */}

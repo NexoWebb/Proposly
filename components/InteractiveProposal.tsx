@@ -151,12 +151,26 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {service.optional && (
+                      {service.optional && !signed && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                          <div style={{
+                            width: '20px', height: '20px', borderRadius: '4px',
+                            border: `2px solid ${isSelected ? '#4A7FA5' : '#B8D4E8'}`,
+                            background: isSelected ? '#4A7FA5' : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {isSelected && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
+                          </div>
+                          <span style={{ fontSize: '9px', color: '#5A7A8F', fontFamily: 'sans-serif', whiteSpace: 'nowrap', letterSpacing: '0.2px' }}>Añadir</span>
+                        </div>
+                      )}
+                      {service.optional && signed && (
                         <div style={{
                           width: '20px', height: '20px', borderRadius: '4px',
                           border: `2px solid ${isSelected ? '#4A7FA5' : '#B8D4E8'}`,
                           background: isSelected ? '#4A7FA5' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0
                         }}>
                           {isSelected && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
                         </div>

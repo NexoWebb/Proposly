@@ -37,6 +37,14 @@ export function computeTotal(blocks: Block[]): number {
   return blocks
     .filter(b => b.type === 'services')
     .flatMap(b => (b as Extract<Block, { type: 'services' }>).content)
+    .filter(s => !s.optional)
+    .reduce((sum, s) => sum + Number(s.price), 0)
+}
+
+export function computeTotalWithOptionals(blocks: Block[]): number {
+  return blocks
+    .filter(b => b.type === 'services')
+    .flatMap(b => (b as Extract<Block, { type: 'services' }>).content)
     .reduce((sum, s) => sum + Number(s.price), 0)
 }
 
@@ -267,7 +275,9 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
 
           {/* SERVICES */}
           {block.type === 'services' && (() => {
-            const total = block.content.reduce((s, sv) => s + Number(sv.price), 0)
+            const baseTotal = block.content.filter(s => !s.optional).reduce((s, sv) => s + Number(sv.price), 0)
+            const optTotal  = block.content.filter(s => s.optional).reduce((s, sv) => s + Number(sv.price), 0)
+            const hasOpts   = block.content.some(s => s.optional)
             const updateSvc = (si: number, field: keyof Service, val: string | boolean | number) => {
               const content = block.content.map((s, idx) => idx === si ? { ...s, [field]: val } : s)
               update(i, { ...block, content })
@@ -299,9 +309,17 @@ export default function BlockEditor({ blocks, onChange, userId }: Props) {
                     onClick={() => update(i, { ...block, content: [...block.content, { name: '', price: 0, optional: false, selected: true }] })}
                     style={{ width: '100%', background: 'transparent', border: `1px dashed ${border}`, borderRadius: '6px', padding: '7px', fontSize: '12px', color: mid, cursor: 'pointer', marginBottom: '12px', fontFamily: 'inherit' }}
                   >+ Añadir línea</button>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: `0.5px solid ${border}`, paddingTop: '10px', gap: '20px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: mid }}>Total sin IVA</span>
-                    <span style={{ fontSize: '18px', fontWeight: '500', color: ink }}>{total.toLocaleString('es-ES')} €</span>
+                  <div style={{ borderTop: `0.5px solid ${border}`, paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: hasOpts ? '4px' : 0 }}>
+                      <span style={{ fontSize: '12px', color: mid }}>Subtotal base</span>
+                      <span style={{ fontSize: '18px', fontWeight: '500', color: ink }}>{baseTotal.toLocaleString('es-ES')} €</span>
+                    </div>
+                    {hasOpts && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ fontSize: '11px', color: mid }}>Si añade opcionales</span>
+                        <span style={{ fontSize: '13px', color: mid }}>+{optTotal.toLocaleString('es-ES')} €</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/lib/useIsMobile'
-import BlockEditor, { Block, computeTotal, normalizeBlocks, mkBlock } from '@/components/BlockEditor'
+import BlockEditor, { Block, computeTotal, computeTotalWithOptionals, normalizeBlocks, mkBlock } from '@/components/BlockEditor'
 
 const bg = 'var(--bg-page)'
 const card = 'var(--bg-card)'
@@ -120,6 +120,8 @@ export default function EditorEdit({ id }: { id: string }) {
   const canSend = !!title && !!clientEmail && !saving && !sending && status === 'draft'
 
   const total = computeTotal(blocks)
+  const totalWithOpts = computeTotalWithOptionals(blocks)
+  const hasOptionals = totalWithOpts > total
   const subtotal = Math.round(total / 1.21 * 100) / 100
   const iva = Math.round((total - subtotal) * 100) / 100
 
@@ -315,10 +317,16 @@ export default function EditorEdit({ id }: { id: string }) {
                   <span style={{ fontSize: '12px', color: mid }}>IVA 21%</span>
                   <span style={{ fontSize: '12px', color: ink }}>{fmtEur(iva)}</span>
                 </div>
-                <div style={{ borderTop: `0.5px solid ${border}`, paddingTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: ink }}>Total</span>
+                <div style={{ borderTop: `0.5px solid ${border}`, paddingTop: '8px', display: 'flex', justifyContent: 'space-between', marginBottom: hasOptionals ? '8px' : 0 }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: ink }}>Total base</span>
                   <span style={{ fontSize: '15px', fontWeight: '500', color: ink }}>{fmtEur(total)}</span>
                 </div>
+                {hasOptionals && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '4px', borderTop: `0.5px solid ${border}` }}>
+                    <span style={{ fontSize: '11px', color: mid }}>Con opcionales</span>
+                    <span style={{ fontSize: '13px', color: mid }}>{fmtEur(totalWithOpts)}</span>
+                  </div>
+                )}
               </div>
             </div>
 

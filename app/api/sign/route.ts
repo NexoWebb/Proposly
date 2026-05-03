@@ -8,6 +8,18 @@ export async function POST(request: NextRequest) {
   const { id, signerName, finalTotal, finalBlocks } = await request.json()
   if (!id || !signerName) return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
 
+  // Extract optional service selections for dedicated column
+  const allOptionals = (finalBlocks ?? [])
+    .filter((b: { type: string }) => b.type === 'services')
+    .flatMap((b: { content: { name: string; price: number; optional?: boolean; selected?: boolean }[] }) =>
+      b.content.filter(s => s.optional)
+    )
+    .map((s: { name: string; price: number; selected?: boolean }) => ({
+      name: s.name,
+      price: s.price,
+      selected: s.selected !== false,
+    }))
+
   const { data: proposal, error } = await supabaseAdmin
     .from('proposals')
     .update({
@@ -16,6 +28,7 @@ export async function POST(request: NextRequest) {
       signer_name: signerName,
       ...(finalTotal !== undefined ? { total_amount: finalTotal } : {}),
       ...(finalBlocks !== undefined ? { blocks: finalBlocks } : {}),
+      ...(allOptionals.length > 0 ? { signed_selections: allOptionals } : {}),
     })
     .eq('id', id)
     .select('title, client_name, client_email, user_id')
@@ -27,19 +40,32 @@ export async function POST(request: NextRequest) {
   const proposalUrl = `${appUrl}/p/${id}`
 
   // Construir resumen de servicios desde los bloques firmados
+  type SvcLine = { name: string; price: number; optional?: boolean; selected?: boolean }
   const serviceBlocks = (finalBlocks ?? []).filter((b: { type: string }) => b.type === 'services')
-  const serviceLines = serviceBlocks.flatMap((b: { content: { name: string; price: number; selected?: boolean; optional?: boolean }[] }) =>
-    b.content.filter(s => s.selected !== false)
-  )
-  const servicesHtml = serviceLines.length > 0
+  const allServices: SvcLine[] = serviceBlocks.flatMap((b: { content: SvcLine[] }) => b.content)
+  const baseServices = allServices.filter(s => !s.optional)
+  const optServices  = allServices.filter(s => s.optional)
+  const acceptedOpts = optServices.filter(s => s.selected !== false)
+  const rejectedOpts = optServices.filter(s => s.selected === false)
+
+  const rowHtml = (s: SvcLine, dim = false) => `
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:${dim ? '#aaa' : '#333'};text-decoration:${dim ? 'line-through' : 'none'}">${s.name}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:${dim ? '#aaa' : '#333'};text-align:right;white-space:nowrap;text-decoration:${dim ? 'line-through' : 'none'}">${Number(s.price).toLocaleString('es-ES')}€</td>
+    </tr>`
+
+  const servicesHtml = allServices.length > 0
     ? `
       <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
-        ${serviceLines.map((s: { name: string; price: number }) => `
-          <tr>
-            <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#333">${s.name}</td>
-            <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#333;text-align:right;white-space:nowrap">${Number(s.price).toLocaleString('es-ES')}€</td>
-          </tr>
-        `).join('')}
+        ${baseServices.map(s => rowHtml(s)).join('')}
+        ${acceptedOpts.length > 0 ? `
+          <tr><td colspan="2" style="padding:10px 0 4px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Opcionales incluidos</td></tr>
+          ${acceptedOpts.map(s => rowHtml(s)).join('')}
+        ` : ''}
+        ${rejectedOpts.length > 0 ? `
+          <tr><td colspan="2" style="padding:10px 0 4px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Opcionales no incluidos</td></tr>
+          ${rejectedOpts.map(s => rowHtml(s, true)).join('')}
+        ` : ''}
         <tr>
           <td style="padding:12px 0 0;font-size:14px;font-weight:600;color:#0f0f0f">Total sin IVA</td>
           <td style="padding:12px 0 0;font-size:16px;font-weight:600;color:#0f0f0f;text-align:right">${Number(finalTotal ?? 0).toLocaleString('es-ES')}€</td>
