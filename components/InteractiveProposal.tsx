@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import type { Block, Service, TimelineItem } from '@/components/BlockEditor'
 import AcceptButton from './AcceptButton'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 interface FiscalParty {
   fiscalName: string
@@ -25,13 +26,26 @@ interface Props {
   cliente?: FiscalParty | null
   proposalTitle?: string
   clientName?: string
+  expired?: boolean
+  expiresAt?: string | null
+  signedAt?: string | null
+  signerName?: string | null
 }
 
 function slugify(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-export default function InteractiveProposal({ initialBlocks, proposalId, signed, autoExport, vatRate = '21', irpfEnabled = false, irpfRate = '15', emisor = null, cliente = null, proposalTitle = '', clientName = '' }: Props) {
+const primary = '#4F6EF7'
+
+export default function InteractiveProposal({
+  initialBlocks, proposalId, signed, autoExport,
+  vatRate = '21', irpfEnabled = false, irpfRate = '15',
+  emisor = null, cliente = null, proposalTitle = '', clientName = '',
+  expired = false, expiresAt = null, signedAt = null, signerName = null,
+}: Props) {
+  const isMobile = useIsMobile()
+
   const [blocks, setBlocks] = useState<Block[]>(() => {
     return initialBlocks.map(b => {
       if (b.type === 'services') {
@@ -39,8 +53,8 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
           ...b,
           content: b.content.map((s: Service) => ({
             ...s,
-            selected: s.optional ? (s.selected ?? false) : true
-          }))
+            selected: s.optional ? (s.selected ?? false) : true,
+          })),
         }
       }
       return b
@@ -48,7 +62,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
   })
 
   const toggleService = (blockIndex: number, serviceIndex: number) => {
-    if (signed) return
+    if (signed || expired) return
     const newBlocks = [...blocks]
     const block = newBlocks[blockIndex]
     if (block.type === 'services') {
@@ -59,54 +73,44 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
     }
   }
 
-  const calculateTotal = () => {
-    return blocks
+  const calculateTotal = () =>
+    blocks
       .filter(b => b.type === 'services')
       .flatMap(b => (b as Extract<Block, { type: 'services' }>).content)
       .filter(s => s.selected !== false)
       .reduce((sum, s) => sum + Number(s.price), 0)
-  }
 
   const currentTotal = calculateTotal()
-
-  const vatNum = ['21','10','4'].includes(vatRate) ? Number(vatRate) : 0
+  const vatNum = ['21', '10', '4'].includes(vatRate) ? Number(vatRate) : 0
   const irpfNum = irpfEnabled ? Number(irpfRate) : 0
   const vatAmount = Math.round(currentTotal * vatNum) / 100
   const irpfAmount = Math.round(currentTotal * irpfNum) / 100
   const grandTotal = currentTotal + vatAmount - irpfAmount
 
   const fmtEur = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
   const showFiscal = !!(emisor || cliente)
+  const notInteractive = signed || expired
 
   const handleDownloadPDF = async () => {
     const element = document.getElementById('proposal-content')
     if (!element) return
-
     const originalWidth = element.style.width
     const originalMaxWidth = element.style.maxWidth
     element.style.width = '900px'
     element.style.maxWidth = '900px'
-
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#D6E8F5',
+      backgroundColor: '#F5F7FA',
       width: 900,
       windowWidth: 900,
     })
-
     element.style.width = originalWidth
     element.style.maxWidth = originalMaxWidth
-
     const imgWidth = 210
     const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    })
-
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight)
     const titleSlug = slugify(proposalTitle) || proposalId
     const clientSlug = slugify(clientName) || 'cliente'
@@ -120,7 +124,34 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
   }, [autoExport])
 
   return (
-    <div className="proposal-content" style={{ maxWidth: '780px', margin: '0 auto', padding: '40px 24px' }}>
+    <div
+      className="proposal-content"
+      style={{
+        maxWidth: '780px',
+        margin: '0 auto',
+        padding: '40px 24px',
+        paddingBottom: isMobile && !notInteractive ? '96px' : '40px',
+      }}
+    >
+
+      {/* Banner: firmada */}
+      {signed && signedAt && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderLeft: '4px solid #22C55E', borderRadius: '8px', padding: '14px 18px', marginBottom: '28px', fontFamily: 'sans-serif' }}>
+          <p style={{ fontSize: '13px', color: '#15803D', margin: 0, fontWeight: '500' }}>
+            Aceptada el {fmtDate(signedAt)}{signerName ? ` · Firmado por ${signerName}` : ''}
+          </p>
+        </div>
+      )}
+
+      {/* Banner: expirada */}
+      {expired && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderLeft: '4px solid #F59E0B', borderRadius: '8px', padding: '14px 18px', marginBottom: '28px', fontFamily: 'sans-serif' }}>
+          <p style={{ fontSize: '13px', color: '#92400E', margin: 0, fontWeight: '500' }}>
+            Esta propuesta expiró{expiresAt ? ` el ${fmtDate(expiresAt)}` : ''}. Contacta con el emisor para una nueva.
+          </p>
+        </div>
+      )}
+
       {blocks.map((block: Block, i: number) => {
         if (block.type === 'header') {
           return (
@@ -149,13 +180,9 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
           )
         }
         if (block.type === 'separator') {
-          return <div key={i} style={{ height: '1px', background: '#B8D4E8', margin: '32px 0' }} />
+          return <div key={i} style={{ height: '1px', background: '#D1D9E6', margin: '32px 0' }} />
         }
         if (block.type === 'services') {
-          const svcSelectedTotal = block.content
-            .filter((s: Service) => s.selected !== false)
-            .reduce((sum, s) => sum + Number(s.price), 0)
-
           return (
             <div key={i} style={{ marginBottom: '24px' }}>
               <p style={{ fontSize: '11px', color: '#5A7A8F', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: '20px' }}>
@@ -163,52 +190,48 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
               </p>
               {block.content.map((service: Service, si: number) => {
                 const isSelected = service.selected !== false
+                const isClickable = service.optional && !notInteractive
                 return (
-                  <div key={si}
-                    onClick={() => toggleService(i, si)}
+                  <div
+                    key={si}
+                    onClick={() => isClickable && toggleService(i, si)}
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '16px 12px',
-                      borderBottom: '1px solid #B8D4E8',
-                      cursor: service.optional && !signed ? 'pointer' : 'default',
-                      background: service.optional && !signed ? (isSelected ? 'rgba(74, 127, 165, 0.06)' : 'transparent') : 'transparent',
+                      borderBottom: '1px solid #D1D9E6',
+                      cursor: isClickable ? 'pointer' : 'default',
+                      background: isClickable && isSelected ? 'rgba(79,110,247,0.05)' : 'transparent',
                       borderRadius: '8px',
                       transition: 'background 0.2s',
-                      opacity: isSelected ? 1 : 0.5
+                      opacity: isSelected ? 1 : 0.5,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {service.optional && !signed && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                      {service.optional && (
+                        /* Touch target wrapper >= 44px */
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', flexShrink: 0, minWidth: '44px', minHeight: '44px' }}>
                           <div style={{
                             width: '20px', height: '20px', borderRadius: '4px',
-                            border: `2px solid ${isSelected ? '#4A7FA5' : '#B8D4E8'}`,
-                            background: isSelected ? '#4A7FA5' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            border: `2px solid ${isSelected ? primary : '#B8D4E8'}`,
+                            background: isSelected ? primary : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {isSelected && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
                           </div>
-                          <span style={{ fontSize: '9px', color: '#5A7A8F', fontFamily: 'sans-serif', whiteSpace: 'nowrap', letterSpacing: '0.2px' }}>Añadir</span>
-                        </div>
-                      )}
-                      {service.optional && signed && (
-                        <div style={{
-                          width: '20px', height: '20px', borderRadius: '4px',
-                          border: `2px solid ${isSelected ? '#4A7FA5' : '#B8D4E8'}`,
-                          background: isSelected ? '#4A7FA5' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          {isSelected && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
+                          {!notInteractive && (
+                            <span style={{ fontSize: '9px', color: '#5A7A8F', fontFamily: 'sans-serif', whiteSpace: 'nowrap', letterSpacing: '0.2px' }}>Añadir</span>
+                          )}
                         </div>
                       )}
                       <div>
                         <span style={{ fontSize: '15px', color: '#0F2A3D', fontFamily: 'sans-serif', textDecoration: isSelected ? 'none' : 'line-through' }}>
                           {service.name}
                         </span>
-                        {service.optional && <span style={{ fontSize: '11px', color: '#5A7A8F', marginLeft: '8px', background: '#EAF4FB', padding: '2px 6px', borderRadius: '4px' }}>Opcional</span>}
+                        {service.optional && (
+                          <span style={{ fontSize: '11px', color: '#5A7A8F', marginLeft: '8px', background: '#EEF1FE', padding: '2px 6px', borderRadius: '4px' }}>Opcional</span>
+                        )}
                       </div>
                     </div>
                     <span style={{ fontSize: '15px', color: '#0F2A3D', fontWeight: '500', fontFamily: 'sans-serif' }}>
@@ -231,24 +254,24 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
               )}
               <div style={{ position: 'relative', paddingLeft: '48px' }}>
                 {tl.items.length > 1 && (
-                  <div style={{ position: 'absolute', left: '15px', top: '22px', bottom: '22px', width: '2px', background: '#B8D4E8' }} />
+                  <div style={{ position: 'absolute', left: '15px', top: '22px', bottom: '22px', width: '2px', background: '#D1D9E6' }} />
                 )}
                 {tl.items.map((item: TimelineItem, ti: number) => (
                   <div key={item.id ?? ti} style={{ position: 'relative', marginBottom: ti < tl.items.length - 1 ? '20px' : 0 }}>
                     <div style={{
                       position: 'absolute', left: '-48px', top: '8px',
                       width: '30px', height: '30px', borderRadius: '50%',
-                      background: '#4A7FA5',
+                      background: primary,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '13px', fontWeight: '700', color: '#fff', zIndex: 1,
                     }}>
                       {ti + 1}
                     </div>
-                    <div style={{ background: 'rgba(255,255,255,0.82)', border: '1px solid #B8D4E8', borderRadius: '10px', padding: '14px 16px' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #D1D9E6', borderRadius: '10px', padding: '14px 16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: item.description ? '6px' : 0 }}>
                         <span style={{ fontSize: '15px', color: '#0F2A3D', fontFamily: 'sans-serif', fontWeight: '700' }}>{item.title}</span>
                         {item.duration && (
-                          <span style={{ fontSize: '11px', color: '#4A7FA5', background: '#EAF4FB', padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11px', color: primary, background: '#EEF1FE', padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {item.duration}
                           </span>
                         )}
@@ -268,7 +291,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
         return null
       })}
 
-      {/* Desglose económico final */}
+      {/* Desglose económico — banda oscura (no tocar lógica) */}
       {currentTotal > 0 && (
         <div style={{ background: '#0F2A3D', borderRadius: '12px', margin: '8px 0 32px', padding: '20px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -316,13 +339,13 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
         </div>
       )}
 
-      <div style={{ height: '1px', background: '#B8D4E8', margin: '32px 0' }} />
+      <div style={{ height: '1px', background: '#D1D9E6', margin: '32px 0' }} />
 
-      {/* Bloque fiscal (incluido en PDF) */}
+      {/* Bloque fiscal — grid responsive */}
       {showFiscal && (
-        <div style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid #B8D4E8', borderRadius: '12px', padding: '20px 24px', margin: '0 0 32px', fontFamily: 'sans-serif' }}>
+        <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #D1D9E6', borderRadius: '12px', padding: '20px 24px', margin: '0 0 32px', fontFamily: 'sans-serif' }}>
           <p style={{ fontSize: '10px', color: '#5A7A8F', letterSpacing: '2px', textTransform: 'uppercase', margin: '0 0 16px' }}>Partes de la operación</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '16px' : '24px' }}>
             {emisor && (
               <div>
                 <p style={{ fontSize: '10px', color: '#5A7A8F', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px', fontWeight: '700' }}>Emisor</p>
@@ -344,18 +367,19 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
         </div>
       )}
 
-      {/* Acciones excluidas del PDF */}
+      {/* Acciones — excluidas del PDF */}
       <div data-html2canvas-ignore="true" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
             onClick={handleDownloadPDF}
             style={{
               background: 'transparent',
-              border: '1px solid #B8D4E8',
+              border: `1px solid rgba(79,110,247,0.3)`,
               borderRadius: '20px',
-              padding: '8px 18px',
+              padding: '10px 20px',
+              minHeight: '44px',
               fontSize: '13px',
-              color: '#4A7FA5',
+              color: primary,
               cursor: 'pointer',
               fontFamily: 'sans-serif',
               display: 'flex',
@@ -370,6 +394,7 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
         <AcceptButton
           proposalId={proposalId}
           signed={signed}
+          expired={expired}
           finalTotal={currentTotal}
           finalBlocks={blocks}
         />
