@@ -45,12 +45,21 @@ function KpiCard({ label, value, delta, hint }: { label: string; value: string; 
 export default function StatsPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
+  const isBelowDesktop = useIsMobile(1024)
+  const isTablet = isBelowDesktop && !isMobile
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState<Range>('30d')
   const [dark, setDark] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [menuOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -198,22 +207,43 @@ export default function StatsPage() {
     <div style={{ minHeight: '100vh', background: bg, fontFamily: 'system-ui, -apple-system, sans-serif', color: ink }}>
 
       {/* Nav */}
-      <nav style={{ background: card, borderBottom: `0.5px solid ${border}`, height: '52px', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
+      <nav style={{ background: card, borderBottom: `0.5px solid ${border}`, height: '52px', display: 'flex', alignItems: 'center', padding: isMobile ? '0 16px' : '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
         <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '28px' }}>
           propos<span style={{ color: primary }}>ly</span>
         </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <button onClick={toggleTheme} style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
-            {dark ? '☀' : '🌙'}
-          </button>
-          <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: `0.5px solid ${border}` }}>Ajustes</a>
-          <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: `0.5px solid ${border}`, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
-            Cerrar sesión
-          </button>
-        </div>
+        {isMobile ? (
+          <div style={{ marginLeft: 'auto', position: 'relative' }}>
+            <button aria-label="Menú" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
+              style={{ width: '44px', height: '44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+            </button>
+            {menuOpen && (
+              <div onClick={e => e.stopPropagation()}
+                style={{ position: 'fixed', top: '52px', left: 0, right: 0, background: card, borderBottom: `0.5px solid ${border}`, padding: '8px 16px', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', zIndex: 20 }}>
+                <a href="/settings" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid ${border}` }}>Ajustes</a>
+                <button onClick={() => { setMenuOpen(false); handleSignOut() }} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}` }}>Cerrar sesión</button>
+                <button onClick={() => { setMenuOpen(false); toggleTheme() }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <span>Modo {dark ? 'claro' : 'oscuro'}</span><span>{dark ? '☀' : '🌙'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button onClick={toggleTheme} style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
+              {dark ? '☀' : '🌙'}
+            </button>
+            <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: `0.5px solid ${border}` }}>Ajustes</a>
+            <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: `0.5px solid ${border}`, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+              Cerrar sesión
+            </button>
+          </div>
+        )}
       </nav>
 
-      <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '24px 14px' : '36px 24px' }}>
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '20px 16px' : isTablet ? '28px 24px' : '36px 28px' }}>
 
         {/* Page tabs */}
         <div style={{ display: 'flex', gap: '2px', marginBottom: '24px' }}>
@@ -227,14 +257,14 @@ export default function StatsPage() {
             <h1 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 2px', letterSpacing: '-0.3px' }}>Estadísticas</h1>
             <p style={{ fontSize: '12px', color: mid, margin: 0 }}>Rendimiento de tus propuestas</p>
           </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '4px', overflowX: isMobile ? 'auto' : 'visible', WebkitOverflowScrolling: 'touch', flexWrap: 'nowrap', maxWidth: isMobile ? '100%' : 'none', paddingBottom: isMobile ? '2px' : 0 }}>
             {ranges.map(r => (
               <button key={r} onClick={() => setRange(r)}
                 style={{
                   background: range === r ? primaryLight : 'none',
                   border: range === r ? '0.5px solid #C4CEFC' : `0.5px solid ${border}`,
                   color: range === r ? primary : mid,
-                  borderRadius: '20px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit',
+                  borderRadius: '20px', padding: isMobile ? '8px 16px' : '5px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, minHeight: isMobile ? '36px' : 'auto',
                 }}>
                 {r}
               </button>

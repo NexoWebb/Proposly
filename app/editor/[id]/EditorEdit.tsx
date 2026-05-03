@@ -33,6 +33,15 @@ const blockPalette: { type: Block['type']; label: string; dot: string }[] = [
 export default function EditorEdit({ id }: { id: string }) {
   const router = useRouter()
   const isMobile = useIsMobile()
+  const isBelowDesktop = useIsMobile(1024)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [menuOpen])
 
   const [userId,       setUserId]       = useState<string | null>(null)
   const [title,        setTitle]        = useState('')
@@ -153,21 +162,25 @@ export default function EditorEdit({ id }: { id: string }) {
       )}
 
       {/* Topbar */}
-      <div style={{ background: card, borderBottom: `0.5px solid ${border}`, padding: '0 20px', height: '52px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ background: card, borderBottom: `0.5px solid ${border}`, padding: isMobile ? '0 12px' : '0 20px', height: '52px', display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 10 }}>
         <a href="/dashboard" style={{ fontSize: '15px', fontWeight: '600', color: ink, textDecoration: 'none', letterSpacing: '-0.3px', flexShrink: 0 }}>
           propos<span style={{ color: primary }}>ly</span>
         </a>
-        <span style={{ color: border, fontSize: '14px', flexShrink: 0 }}>/</span>
-        <span style={{ fontSize: '12px', color: mid, flexShrink: 0 }}>
-          <a href="/dashboard" style={{ color: mid, textDecoration: 'none' }}>Propuestas</a>
-        </span>
-        <span style={{ color: border, fontSize: '14px', flexShrink: 0 }}>/</span>
+        {!isMobile && (
+          <>
+            <span style={{ color: border, fontSize: '14px', flexShrink: 0 }}>/</span>
+            <span style={{ fontSize: '12px', color: mid, flexShrink: 0 }}>
+              <a href="/dashboard" style={{ color: mid, textDecoration: 'none' }}>Propuestas</a>
+            </span>
+            <span style={{ color: border, fontSize: '14px', flexShrink: 0 }}>/</span>
+          </>
+        )}
 
         {/* Editable title */}
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="Título de la propuesta"
+          placeholder="Título"
           style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: '13px', fontWeight: '500', color: ink, fontFamily: 'inherit', minWidth: 0 }}
         />
 
@@ -176,41 +189,95 @@ export default function EditorEdit({ id }: { id: string }) {
           {status === 'draft' ? 'Borrador' : status === 'sent' ? 'Enviada' : status === 'opened' ? 'Abierta' : 'Firmada'}
         </span>
 
-        <button onClick={toggleTheme}
-          style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid, flexShrink: 0 }}>
-          {dark ? '☀' : '🌙'}
-        </button>
-
-        {!isMobile && (
+        {isMobile ? (
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button aria-label="Menú" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
+              style={{ width: '44px', height: '44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+            </button>
+            {menuOpen && (
+              <div onClick={e => e.stopPropagation()}
+                style={{ position: 'fixed', top: '52px', left: 0, right: 0, background: card, borderBottom: `0.5px solid ${border}`, padding: '8px 16px', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', zIndex: 20 }}>
+                <a href="/dashboard" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid ${border}` }}>← Propuestas</a>
+                <button onClick={() => { setMenuOpen(false); window.open(`/p/${id}`, '_blank') }}
+                  style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}` }}>Vista previa</button>
+                <button onClick={() => { setMenuOpen(false); handleCopyLink() }}
+                  style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}` }}>{copied ? '✓ Copiado' : 'Copiar link'}</button>
+                <a href="/settings" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid ${border}` }}>Ajustes</a>
+                <button onClick={() => { setMenuOpen(false); toggleTheme() }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <span>Modo {dark ? 'claro' : 'oscuro'}</span><span>{dark ? '☀' : '🌙'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
           <>
-            <button onClick={() => window.open(`/p/${id}`, '_blank')}
-              style={{ background: 'none', border: `0.5px solid ${border}`, color: mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-              Vista previa
+            <button onClick={toggleTheme}
+              style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid, flexShrink: 0 }}>
+              {dark ? '☀' : '🌙'}
             </button>
-            <button onClick={handleCopyLink}
-              style={{ background: 'none', border: `0.5px solid ${border}`, color: copied ? '#639922' : mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-              {copied ? '✓ Copiado' : 'Copiar link'}
-            </button>
+            {!isBelowDesktop && (
+              <>
+                <button onClick={() => window.open(`/p/${id}`, '_blank')}
+                  style={{ background: 'none', border: `0.5px solid ${border}`, color: mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  Vista previa
+                </button>
+                <button onClick={handleCopyLink}
+                  style={{ background: 'none', border: `0.5px solid ${border}`, color: copied ? '#639922' : mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  {copied ? '✓ Copiado' : 'Copiar link'}
+                </button>
+              </>
+            )}
+            {!isBelowDesktop && (
+              <button onClick={() => canSend ? setShowSendModal(true) : handleSave()} disabled={!canSave}
+                style={{ background: primary, color: '#fff', border: 'none', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: '500', cursor: canSave ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap', opacity: canSave ? 1 : 0.5 }}>
+                {saving ? 'Guardando...' : sending ? 'Enviando...' : status === 'draft' ? 'Enviar propuesta' : 'Guardar cambios'}
+              </button>
+            )}
           </>
         )}
-
-        <button onClick={() => canSend ? setShowSendModal(true) : handleSave()} disabled={!canSave}
-          style={{ background: primary, color: '#fff', border: 'none', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: '500', cursor: canSave ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap', opacity: canSave ? 1 : 0.5 }}>
-          {saving ? 'Guardando...' : sending ? 'Enviando...' : status === 'draft' ? 'Enviar propuesta' : 'Guardar cambios'}
-        </button>
       </div>
 
       {/* 2-col layout */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Canvas */}
-        <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '20px 14px' : '28px 32px' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '20px 16px 88px' : isBelowDesktop ? '24px 24px 88px' : '28px 32px' }}>
           <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
         </div>
 
-        {/* Right sidebar */}
-        {!isMobile && (
-          <div style={{ width: '240px', flexShrink: 0, background: card, borderLeft: `0.5px solid ${border}`, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '0' }}>
+        {/* Right sidebar — desktop inline, below-desktop in slide-up panel */}
+        {(!isBelowDesktop || detailsOpen) && (
+          <div style={{
+            width: isBelowDesktop ? '100%' : '240px',
+            flexShrink: 0,
+            background: card,
+            borderLeft: isBelowDesktop ? 'none' : `0.5px solid ${border}`,
+            borderTop: isBelowDesktop ? `0.5px solid ${border}` : 'none',
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0',
+            position: isBelowDesktop ? 'fixed' : 'static',
+            left: isBelowDesktop ? 0 : 'auto',
+            right: isBelowDesktop ? 0 : 'auto',
+            bottom: isBelowDesktop ? 0 : 'auto',
+            maxHeight: isBelowDesktop ? '85vh' : 'none',
+            borderTopLeftRadius: isBelowDesktop ? '16px' : 0,
+            borderTopRightRadius: isBelowDesktop ? '16px' : 0,
+            boxShadow: isBelowDesktop ? '0 -8px 24px rgba(0,0,0,0.12)' : 'none',
+            zIndex: isBelowDesktop ? 60 : 'auto',
+          }}>
+            {isBelowDesktop && (
+              <div style={{ position: 'relative', padding: '8px 0' }}>
+                <div style={{ width: '36px', height: '4px', background: border, borderRadius: '2px', margin: '0 auto' }} />
+                <button onClick={() => setDetailsOpen(false)} aria-label="Cerrar"
+                  style={{ position: 'absolute', right: '8px', top: '4px', width: '32px', height: '32px', background: 'none', border: 'none', cursor: 'pointer', color: mid, fontSize: '20px' }}>×</button>
+              </div>
+            )}
 
             {/* Client data */}
             <div style={{ padding: '18px 16px', borderBottom: `0.5px solid ${border}` }}>
@@ -282,13 +349,26 @@ export default function EditorEdit({ id }: { id: string }) {
           </div>
         )}
 
-        {/* Mobile bottom bar */}
-        {isMobile && (
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: card, borderTop: `0.5px solid ${border}`, padding: '10px 16px', display: 'flex', gap: '8px' }}>
-            <input style={{ ...inp, flex: 1 }} placeholder="Cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
+        {/* Mobile/tablet backdrop for slide-up panel */}
+        {isBelowDesktop && detailsOpen && (
+          <div onClick={() => setDetailsOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 55 }} />
+        )}
+
+        {/* Mobile/tablet sticky bottom bar */}
+        {isBelowDesktop && (
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: card, borderTop: `0.5px solid ${border}`, padding: '8px 12px env(safe-area-inset-bottom, 8px)', display: 'flex', gap: '8px', zIndex: 50 }}>
+            <button onClick={() => setDetailsOpen(true)}
+              style={{ minHeight: '44px', background: surface, border: `1px solid ${border}`, borderRadius: '10px', padding: '0 14px', fontSize: '13px', color: ink, cursor: 'pointer', fontFamily: 'inherit', fontWeight: '500', flexShrink: 0 }}>
+              Detalles ↑
+            </button>
             <button onClick={handleSave} disabled={!canSave}
-              style={{ background: primary, color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
-              Guardar
+              style={{ flex: 1, minHeight: '44px', background: surface, border: `1px solid ${border}`, color: canSave ? ink : mid, borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: canSave ? 'pointer' : 'default', fontFamily: 'inherit', opacity: canSave ? 1 : 0.6 }}>
+              {saving ? 'Guardando...' : 'Guardar borrador'}
+            </button>
+            <button onClick={() => canSend ? setShowSendModal(true) : handleSave()} disabled={!canSave}
+              style={{ flex: 1, minHeight: '44px', background: canSend ? primary : '#E2EBF2', color: canSend ? '#fff' : mid, border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: canSave ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+              {sending ? 'Enviando...' : status === 'draft' ? '✉ Enviar al cliente' : 'Guardar cambios'}
             </button>
           </div>
         )}

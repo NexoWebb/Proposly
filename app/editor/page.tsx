@@ -37,6 +37,8 @@ const inp: React.CSSProperties = {
 function EditorContent() {
   const router = useRouter()
   const isMobile = useIsMobile()
+  const isBelowDesktop = useIsMobile(1024)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const [step, setStep] = useState<Step>('picker')
   const [userId, setUserId] = useState<string | null>(null)
@@ -146,7 +148,7 @@ function EditorContent() {
         <h1 style={{ fontSize: isMobile ? '22px' : '30px', fontWeight: '400', color: ink, margin: '0 0 8px', letterSpacing: '-0.5px', fontFamily: 'Georgia, serif' }}>Elige una plantilla</h1>
         <p style={{ fontSize: '14px', color: mid, margin: 0 }}>Selecciona una de tus plantillas guardadas o empieza desde cero</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, 1fr)`, gap: '16px', marginBottom: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isBelowDesktop ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
         {templates.map(tpl => (
           <button key={tpl.id} onClick={() => startWithTemplate(tpl)}
             style={{ background: 'var(--bg-card)', border: `1px solid ${border}`, borderRadius: '16px', padding: '28px 22px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
@@ -230,7 +232,7 @@ function EditorContent() {
       )}
 
       {/* Editor: canvas left | sidebar right */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 80px' : '32px 32px 80px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 240px', gap: isMobile ? '24px' : '32px', alignItems: 'start' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 16px 96px' : isBelowDesktop ? '24px 24px 96px' : '32px 32px 80px', display: 'grid', gridTemplateColumns: isBelowDesktop ? '1fr' : '1fr 240px', gap: isBelowDesktop ? '24px' : '32px', alignItems: 'start' }}>
 
         {/* Canvas */}
         <div>
@@ -238,8 +240,34 @@ function EditorContent() {
           <BlockEditor blocks={blocks} onChange={setBlocks} userId={userId ?? undefined} />
         </div>
 
-        {/* Sidebar */}
-        <div style={{ position: isMobile ? 'static' : 'sticky', top: '68px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Sidebar — desktop inline, below-desktop inside slide-up panel */}
+        <div style={{
+          position: isBelowDesktop ? 'fixed' : 'sticky',
+          top: isBelowDesktop ? 'auto' : '68px',
+          left: isBelowDesktop ? 0 : 'auto',
+          right: isBelowDesktop ? 0 : 'auto',
+          bottom: isBelowDesktop ? 0 : 'auto',
+          maxHeight: isBelowDesktop ? '85vh' : 'none',
+          width: isBelowDesktop ? '100%' : 'auto',
+          background: isBelowDesktop ? 'var(--bg-page)' : 'transparent',
+          borderTopLeftRadius: isBelowDesktop ? '16px' : 0,
+          borderTopRightRadius: isBelowDesktop ? '16px' : 0,
+          borderTop: isBelowDesktop ? `0.5px solid ${border}` : 'none',
+          boxShadow: isBelowDesktop ? '0 -8px 24px rgba(0,0,0,0.12)' : 'none',
+          padding: isBelowDesktop ? '10px 16px 24px' : 0,
+          overflowY: isBelowDesktop ? 'auto' : 'visible',
+          zIndex: isBelowDesktop ? 60 : 'auto',
+          transform: isBelowDesktop ? (detailsOpen ? 'translateY(0)' : 'translateY(100%)') : 'none',
+          transition: isBelowDesktop ? 'transform 0.25s ease' : 'none',
+          display: 'flex', flexDirection: 'column', gap: '10px',
+        }}>
+          {isBelowDesktop && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 8px' }}>
+              <div style={{ width: '36px', height: '4px', background: border, borderRadius: '2px', margin: '0 auto' }} />
+              <button onClick={() => setDetailsOpen(false)} aria-label="Cerrar"
+                style={{ position: 'absolute', right: '12px', top: '8px', width: '32px', height: '32px', background: 'none', border: 'none', cursor: 'pointer', color: mid, fontSize: '18px' }}>×</button>
+            </div>
+          )}
 
           {templates.length > 0 && (
             <button onClick={() => setStep('picker')} style={{ background: 'none', border: 'none', color: mid, fontSize: '13px', cursor: 'pointer', padding: '0 0 4px', textAlign: 'left', fontWeight: '500' }}>
@@ -317,13 +345,39 @@ function EditorContent() {
           </button>
         </div>
       </div>
+
+      {/* Mobile/tablet backdrop for slide-up panel */}
+      {isBelowDesktop && detailsOpen && (
+        <div onClick={() => setDetailsOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 55 }} />
+      )}
+
+      {/* Mobile/tablet sticky bottom bar */}
+      {isBelowDesktop && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: cardBg, borderTop: `0.5px solid ${border}`, padding: '8px 12px env(safe-area-inset-bottom, 8px)', display: 'flex', gap: '8px', zIndex: 50 }}>
+          <button onClick={() => setDetailsOpen(true)}
+            style={{ minHeight: '44px', background: surface, border: `1px solid ${border}`, borderRadius: '10px', padding: '0 14px', fontSize: '13px', color: ink, cursor: 'pointer', fontFamily: 'inherit', fontWeight: '500', flexShrink: 0 }}>
+            Detalles ↑
+          </button>
+          <button onClick={handleSave} disabled={!canSave}
+            style={{ flex: 1, minHeight: '44px', background: canSave ? surface : surface, border: `1px solid ${border}`, color: canSave ? ink : mid, borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: canSave ? 'pointer' : 'default', fontFamily: 'inherit', opacity: canSave ? 1 : 0.6 }}>
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+          <button onClick={() => setShowSendModal(true)} disabled={!canSend}
+            style={{ flex: 1, minHeight: '44px', background: canSend ? '#4A9B6F' : '#E2EBF2', color: canSend ? '#fff' : mid, border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: canSend ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+            {sending ? '...' : '✉ Enviar'}
+          </button>
+        </div>
+      )}
     </>
   )
 }
 
 export default function EditorPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [dark, setDark] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   useEffect(() => {
     setDark(document.documentElement.classList.contains('dark'))
     if (!localStorage.getItem('theme')) {
@@ -340,25 +394,56 @@ export default function EditorPage() {
       })
     }
   }, [])
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [menuOpen])
   const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
+  const toggleTheme = async () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light'); const { data: { user } } = await supabase.auth.getUser(); if (user) supabase.from('profiles').update({ theme_preference: next ? 'dark' : 'light' }).eq('user_id', user.id) }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <nav style={{ background: 'var(--bg-card, #fff)', borderBottom: '0.5px solid var(--border, #E8EDF2)', height: '52px', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
+      <nav style={{ background: 'var(--bg-card, #fff)', borderBottom: '0.5px solid var(--border, #E8EDF2)', height: '52px', display: 'flex', alignItems: 'center', padding: isMobile ? '0 16px' : '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
         <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '20px', color: ink }}>
           propos<span style={{ color: primary }}>ly</span>
         </span>
-        <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 10px', borderRadius: '20px', textDecoration: 'none' }}>← Propuestas</a>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <button onClick={async () => { const next = !dark; setDark(next); document.documentElement.classList.toggle('dark', next); localStorage.setItem('theme', next ? 'dark' : 'light'); const { data: { user } } = await supabase.auth.getUser(); if (user) supabase.from('profiles').update({ theme_preference: next ? 'dark' : 'light' }).eq('user_id', user.id) }}
-            style={{ fontSize: '14px', background: 'none', border: '0.5px solid var(--border, #E8EDF2)', padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
-            {dark ? '☀' : '🌙'}
-          </button>
-          <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: '0.5px solid var(--border, #E8EDF2)' }}>Ajustes</a>
-          <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: '0.5px solid var(--border, #E8EDF2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
-            Cerrar sesión
-          </button>
-        </div>
+        {!isMobile && (
+          <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 10px', borderRadius: '20px', textDecoration: 'none' }}>← Propuestas</a>
+        )}
+        {isMobile ? (
+          <div style={{ marginLeft: 'auto', position: 'relative' }}>
+            <button aria-label="Menú" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
+              style={{ width: '44px', height: '44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+            </button>
+            {menuOpen && (
+              <div onClick={e => e.stopPropagation()}
+                style={{ position: 'fixed', top: '52px', left: 0, right: 0, background: 'var(--bg-card)', borderBottom: `0.5px solid var(--border)`, padding: '8px 16px', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', zIndex: 20 }}>
+                <a href="/dashboard" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid var(--border)` }}>← Propuestas</a>
+                <a href="/settings" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid var(--border)` }}>Ajustes</a>
+                <button onClick={() => { setMenuOpen(false); handleSignOut() }} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: `0.5px solid var(--border)` }}>Cerrar sesión</button>
+                <button onClick={() => { setMenuOpen(false); toggleTheme() }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <span>Modo {dark ? 'claro' : 'oscuro'}</span><span>{dark ? '☀' : '🌙'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button onClick={toggleTheme}
+              style={{ fontSize: '14px', background: 'none', border: '0.5px solid var(--border, #E8EDF2)', padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
+              {dark ? '☀' : '🌙'}
+            </button>
+            <a href="/settings" style={{ fontSize: '13px', color: mid, textDecoration: 'none', padding: '6px 12px', borderRadius: '8px', border: '0.5px solid var(--border, #E8EDF2)' }}>Ajustes</a>
+            <button onClick={handleSignOut} style={{ fontSize: '13px', color: mid, background: 'none', border: '0.5px solid var(--border, #E8EDF2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+              Cerrar sesión
+            </button>
+          </div>
+        )}
       </nav>
       <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px', color: mid, fontSize: '14px' }}>Cargando...</div>}>
         <EditorContent />

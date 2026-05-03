@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 const primary = '#4F6EF7'
 const primaryLight = '#EEF1FE'
@@ -19,6 +20,9 @@ const inp: React.CSSProperties = {
 export default function SettingsPage() {
   const router  = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
+  const isMobile = useIsMobile()
+  const isBelowDesktop = useIsMobile(1024)
+  const isTablet = isBelowDesktop && !isMobile
 
   const [userId,      setUserId]      = useState<string | null>(null)
   const [name,        setName]        = useState('')
@@ -34,6 +38,14 @@ export default function SettingsPage() {
   const [templates,   setTemplates]   = useState<{ id: string; name: string }[]>([])
   const [deletingTpl, setDeletingTpl] = useState<string | null>(null)
   const [dark,        setDark]        = useState(false)
+  const [menuOpen,    setMenuOpen]    = useState(false)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [menuOpen])
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains('dark'))
@@ -55,6 +67,8 @@ export default function SettingsPage() {
     document.documentElement.classList.toggle('dark', next)
     localStorage.setItem('theme', next ? 'dark' : 'light')
   }
+
+  const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/login') }
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -126,21 +140,47 @@ export default function SettingsPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'system-ui, -apple-system, sans-serif', color: ink }}>
 
       {/* Nav */}
-      <nav style={{ background: 'var(--bg-card)', borderBottom: `0.5px solid ${border}`, height: '52px', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
+      <nav style={{ background: 'var(--bg-card)', borderBottom: `0.5px solid ${border}`, height: '52px', display: 'flex', alignItems: 'center', padding: isMobile ? '0 16px' : '0 24px', position: 'sticky', top: 0, zIndex: 10 }}>
         <span style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '-0.3px', marginRight: '28px' }}>
           propos<span style={{ color: primary }}>ly</span>
         </span>
-        <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Propuestas</a>
-        <a href="/stats" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Estadísticas</a>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <button onClick={toggleTheme} style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
-            {dark ? '☀' : '🌙'}
-          </button>
-          <span style={{ fontSize: '13px', color: primary, background: primaryLight, padding: '5px 12px', borderRadius: '20px', fontWeight: '500' }}>Ajustes</span>
-        </div>
+        {!isMobile && (
+          <>
+            <a href="/dashboard" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Propuestas</a>
+            <a href="/stats" style={{ fontSize: '13px', color: mid, padding: '5px 12px', borderRadius: '20px', textDecoration: 'none' }}>Estadísticas</a>
+          </>
+        )}
+        {isMobile ? (
+          <div style={{ marginLeft: 'auto', position: 'relative' }}>
+            <button aria-label="Menú" onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
+              style={{ width: '44px', height: '44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+              <span style={{ width: '20px', height: '1.5px', background: ink, borderRadius: '1px' }} />
+            </button>
+            {menuOpen && (
+              <div onClick={e => e.stopPropagation()}
+                style={{ position: 'fixed', top: '52px', left: 0, right: 0, background: 'var(--bg-card)', borderBottom: `0.5px solid ${border}`, padding: '8px 16px', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', zIndex: 20 }}>
+                <a href="/dashboard" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid ${border}` }}>Propuestas</a>
+                <a href="/stats" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid ${border}` }}>Estadísticas</a>
+                <button onClick={() => { setMenuOpen(false); handleSignOut() }} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}` }}>Cerrar sesión</button>
+                <button onClick={() => { setMenuOpen(false); toggleTheme() }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <span>Modo {dark ? 'claro' : 'oscuro'}</span><span>{dark ? '☀' : '🌙'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button onClick={toggleTheme} style={{ fontSize: '14px', background: 'none', border: `0.5px solid ${border}`, padding: '5px 8px', borderRadius: '8px', cursor: 'pointer', color: mid }}>
+              {dark ? '☀' : '🌙'}
+            </button>
+            <span style={{ fontSize: '13px', color: primary, background: primaryLight, padding: '5px 12px', borderRadius: '20px', fontWeight: '500' }}>Ajustes</span>
+          </div>
+        )}
       </nav>
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '32px 24px 80px' }}>
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: isMobile ? '20px 16px 80px' : isTablet ? '28px 24px 80px' : '32px 28px 80px' }}>
 
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 2px', letterSpacing: '-0.3px', color: ink }}>Ajustes</h1>
@@ -181,7 +221,7 @@ export default function SettingsPage() {
             <Msg text={profileMsg} />
 
             <button onClick={handleSaveProfile} disabled={savingProfile}
-              style={{ background: savingProfile ? 'var(--bg-surface)' : primary, color: savingProfile ? mid : '#fff', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingProfile ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+              style={{ background: savingProfile ? 'var(--bg-surface)' : primary, color: savingProfile ? mid : '#fff', border: 'none', borderRadius: '8px', padding: isMobile ? '12px 20px' : '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingProfile ? 'default' : 'pointer', fontFamily: 'inherit', minHeight: isMobile ? '44px' : 'auto' }}>
               {savingProfile ? 'Guardando...' : 'Guardar perfil'}
             </button>
           </div>
@@ -227,7 +267,7 @@ export default function SettingsPage() {
             <Msg text={passwordMsg} />
 
             <button onClick={handleSavePassword} disabled={savingPassword}
-              style={{ background: savingPassword ? 'var(--bg-surface)' : primary, color: savingPassword ? mid : '#fff', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingPassword ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+              style={{ background: savingPassword ? 'var(--bg-surface)' : primary, color: savingPassword ? mid : '#fff', border: 'none', borderRadius: '8px', padding: isMobile ? '12px 20px' : '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingPassword ? 'default' : 'pointer', fontFamily: 'inherit', minHeight: isMobile ? '44px' : 'auto' }}>
               {savingPassword ? 'Guardando...' : 'Cambiar contraseña'}
             </button>
           </div>
