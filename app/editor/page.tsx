@@ -48,6 +48,8 @@ function EditorContent() {
   const [title, setTitle] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
+  const [clientFiscalId, setClientFiscalId] = useState('')
+  const [clientFiscalAddress, setClientFiscalAddress] = useState('')
   const [blocks, setBlocks] = useState<Block[]>([])
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
@@ -59,12 +61,21 @@ function EditorContent() {
   const [tplColor, setTplColor] = useState('#FAF7F3')
   const [savingTpl, setSavingTpl] = useState(false)
   const [expiresAt, setExpiresAt] = useState('')
+  const [vatRate, setVatRate] = useState('21')
+  const [irpfEnabled, setIrpfEnabled] = useState(false)
+  const [irpfRate, setIrpfRate] = useState('15')
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
+      const { data: profile } = await supabase.from('profiles').select('default_vat_rate, default_irpf_enabled, default_irpf_rate').eq('user_id', user.id).single()
+      if (profile) {
+        setVatRate(profile.default_vat_rate ?? '21')
+        setIrpfEnabled(profile.default_irpf_enabled ?? false)
+        setIrpfRate(profile.default_irpf_rate ?? '15')
+      }
       const { data } = await supabase.from('templates').select('id, name, blocks, icon, color').eq('user_id', user.id).order('created_at', { ascending: false })
       const tpls = (data ?? []).map(t => ({ ...t, icon: t.icon ?? '📄', color: t.color ?? '#FAF7F3' })) as UserTemplate[]
       setTemplates(tpls)
@@ -88,7 +99,16 @@ function EditorContent() {
 
   const persist = async () => {
     const uid = userId ?? (await supabase.auth.getUser()).data.user?.id
-    return supabase.from('proposals').insert({ user_id: uid, title, client_name: clientName, client_email: clientEmail, blocks, total_amount: computeTotal(blocks), status: 'draft', expires_at: expiresAt || null }).select('id').single()
+    return supabase.from('proposals').insert({
+      user_id: uid, title, client_name: clientName, client_email: clientEmail,
+      client_fiscal_id: clientFiscalId || null,
+      client_fiscal_address: clientFiscalAddress || null,
+      blocks, total_amount: computeTotal(blocks), status: 'draft',
+      expires_at: expiresAt || null,
+      vat_rate: vatRate,
+      irpf_enabled: irpfEnabled,
+      irpf_rate: irpfEnabled ? irpfRate : null,
+    }).select('id').single()
   }
 
   const handleSave = async () => { setSaving(true); await persist(); router.push('/dashboard') }
@@ -136,9 +156,23 @@ function EditorContent() {
 
   const canSave = !!title && !saving && !sending
   const canSend = !!title && !!clientEmail && !saving && !sending
-  const total = computeTotal(blocks)
+  const baseTotal = computeTotal(blocks)
   const totalWithOpts = computeTotalWithOptionals(blocks)
-  const hasOptionals = totalWithOpts > total
+  const hasOptionals = totalWithOpts > baseTotal
+  const optsTotal = totalWithOpts - baseTotal
+
+  const vatNum = ['21','10','4'].includes(vatRate) ? Number(vatRate) : 0
+  const irpfNum = irpfEnabled ? Number(irpfRate) : 0
+
+  const vatAmountBase = Math.round(baseTotal * vatNum) / 100
+  const irpfAmountBase = Math.round(baseTotal * irpfNum) / 100
+  const totalBase = baseTotal + vatAmountBase - irpfAmountBase
+
+  const vatAmountFull = Math.round(totalWithOpts * vatNum) / 100
+  const irpfAmountFull = Math.round(totalWithOpts * irpfNum) / 100
+  const totalFull = totalWithOpts + vatAmountFull - irpfAmountFull
+
+  const fmtEur = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
 
   if (loadingTemplates) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: mid, fontSize: '14px' }}>Cargando...</div>
@@ -283,6 +317,8 @@ function EditorContent() {
             <input style={inp} placeholder="Título de la propuesta" value={title} onChange={e => setTitle(e.target.value)} />
             <input style={inp} placeholder="Nombre del cliente" value={clientName} onChange={e => setClientName(e.target.value)} />
             <input style={inp} type="email" placeholder="Email del cliente" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+            <input style={inp} placeholder="NIF/CIF del cliente (opcional)" value={clientFiscalId} onChange={e => setClientFiscalId(e.target.value.toUpperCase())} />
+            <input style={inp} placeholder="Dirección fiscal del cliente" value={clientFiscalAddress} onChange={e => setClientFiscalAddress(e.target.value)} />
             <div>
               <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '4px 0 6px' }}>Válida hasta</p>
               <input style={inp} type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
@@ -292,18 +328,76 @@ function EditorContent() {
           {/* Economic summary */}
           <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: '12px', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ fontSize: '10px', color: mid, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 10px' }}>Resumen económico</p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: hasOptionals ? '6px' : 0 }}>
-              <span style={{ fontSize: '13px', color: mid }}>Total base</span>
-              <span style={{ fontSize: '20px', fontWeight: '600', color: ink, fontVariantNumeric: 'tabular-nums' }}>
-                {total.toLocaleString('es-ES')} €
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '12px', color: mid }}>Subtotal base</span>
+              <span style={{ fontSize: '12px', color: ink, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(baseTotal)}</span>
+            </div>
+            {hasOptionals && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', color: mid }}>+ Si añade opcionales</span>
+                <span style={{ fontSize: '11px', color: mid, fontVariantNumeric: 'tabular-nums' }}>+{fmtEur(optsTotal)}</span>
+              </div>
+            )}
+
+            <div style={{ height: '0.5px', background: border, margin: '8px 0' }} />
+
+            {/* IVA row with dropdown */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <select
+                value={vatRate}
+                onChange={e => setVatRate(e.target.value)}
+                style={{ fontSize: '11px', color: mid, background: 'none', border: 'none', outline: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+              >
+                <option value="21">IVA 21%</option>
+                <option value="10">IVA 10%</option>
+                <option value="4">IVA 4%</option>
+                <option value="exempt">IVA Exento</option>
+                <option value="isp">IVA ISP</option>
+              </select>
+              <span style={{ fontSize: '11px', color: mid, fontVariantNumeric: 'tabular-nums' }}>
+                {vatRate === 'exempt' ? 'Exento' : vatRate === 'isp' ? 'ISP' : fmtEur(vatAmountBase)}
               </span>
+            </div>
+
+            {/* IRPF row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIrpfEnabled(v => !v)}
+                  style={{ width: '28px', height: '16px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: irpfEnabled ? primary : border, position: 'relative', flexShrink: 0 }}
+                >
+                  <span style={{ position: 'absolute', top: '2px', left: irpfEnabled ? '14px' : '2px', width: '12px', height: '12px', borderRadius: '50%', background: '#fff' }} />
+                </button>
+                {irpfEnabled ? (
+                  <select
+                    value={irpfRate}
+                    onChange={e => setIrpfRate(e.target.value)}
+                    style={{ fontSize: '11px', color: mid, background: 'none', border: 'none', outline: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+                  >
+                    <option value="7">IRPF -7%</option>
+                    <option value="15">IRPF -15%</option>
+                  </select>
+                ) : (
+                  <span style={{ fontSize: '11px', color: mid }}>IRPF (sin retención)</span>
+                )}
+              </div>
+              {irpfEnabled && (
+                <span style={{ fontSize: '11px', color: '#A32D2D', fontVariantNumeric: 'tabular-nums' }}>-{fmtEur(irpfAmountBase)}</span>
+              )}
+            </div>
+
+            <div style={{ height: '0.5px', background: border, margin: '8px 0' }} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: hasOptionals ? '6px' : 0 }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: ink }}>Total base</span>
+              <span style={{ fontSize: '18px', fontWeight: '600', color: ink, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalBase)}</span>
             </div>
             {hasOptionals && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span style={{ fontSize: '11px', color: mid }}>Con opcionales</span>
-                <span style={{ fontSize: '14px', color: mid, fontVariantNumeric: 'tabular-nums' }}>
-                  {totalWithOpts.toLocaleString('es-ES')} €
-                </span>
+                <span style={{ fontSize: '13px', color: mid, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalFull)}</span>
               </div>
             )}
           </div>

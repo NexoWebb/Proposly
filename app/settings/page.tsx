@@ -17,6 +17,24 @@ const inp: React.CSSProperties = {
   color: ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
 }
 
+const Section = ({ children }: { children: React.ReactNode }) => (
+  <div style={{ background: 'var(--bg-card)', border: `0.5px solid ${border}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '10px' }}>
+    {children}
+  </div>
+)
+
+const SectionHeader = ({ label }: { label: string }) => (
+  <div style={{ borderBottom: `0.5px solid ${border}`, padding: '13px 18px' }}>
+    <p style={{ fontSize: '11px', color: mid, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>{label}</p>
+  </div>
+)
+
+const Msg = ({ text }: { text: string }) => text ? (
+  <div style={{ background: text.startsWith('✓') ? '#EAF3DE' : '#FEE', border: `0.5px solid ${text.startsWith('✓') ? '#639922' : '#A32D2D'}30`, borderRadius: '8px', padding: '9px 12px', marginBottom: '14px' }}>
+    <p style={{ fontSize: '12px', color: text.startsWith('✓') ? '#3B6D11' : '#A32D2D', margin: 0 }}>{text}</p>
+  </div>
+) : null
+
 export default function SettingsPage() {
   const router  = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -40,6 +58,21 @@ export default function SettingsPage() {
   const [dark,        setDark]        = useState(false)
   const [menuOpen,    setMenuOpen]    = useState(false)
 
+  // Datos fiscales
+  const [fiscalName,       setFiscalName]       = useState('')
+  const [fiscalId,         setFiscalId]         = useState('')
+  const [fiscalAddress,    setFiscalAddress]    = useState('')
+  const [fiscalPostalCode, setFiscalPostalCode] = useState('')
+  const [fiscalCity,       setFiscalCity]       = useState('')
+  const [fiscalProvince,   setFiscalProvince]   = useState('')
+  const [fiscalCountry,    setFiscalCountry]    = useState('España')
+  const [defaultVatRate,   setDefaultVatRate]   = useState('21')
+  const [defaultIrpfEnabled, setDefaultIrpfEnabled] = useState(false)
+  const [defaultIrpfRate,  setDefaultIrpfRate]  = useState('15')
+  const [savingFiscal,     setSavingFiscal]     = useState(false)
+  const [fiscalMsg,        setFiscalMsg]        = useState('')
+  const [fiscalIdError,    setFiscalIdError]    = useState('')
+
   useEffect(() => {
     if (!menuOpen) return
     const close = () => setMenuOpen(false)
@@ -54,7 +87,20 @@ export default function SettingsPage() {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
       const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
-      if (data) { setName(data.name ?? ''); setLogoUrl(data.logo_url ?? null) }
+      if (data) {
+        setName(data.name ?? '')
+        setLogoUrl(data.logo_url ?? null)
+        setFiscalName(data.fiscal_name ?? '')
+        setFiscalId(data.fiscal_id ?? '')
+        setFiscalAddress(data.fiscal_address ?? '')
+        setFiscalPostalCode(data.fiscal_postal_code ?? '')
+        setFiscalCity(data.fiscal_city ?? '')
+        setFiscalProvince(data.fiscal_province ?? '')
+        setFiscalCountry(data.fiscal_country ?? 'España')
+        setDefaultVatRate(data.default_vat_rate ?? '21')
+        setDefaultIrpfEnabled(data.default_irpf_enabled ?? false)
+        setDefaultIrpfRate(data.default_irpf_rate ?? '15')
+      }
       const { data: tpls } = await supabase.from('templates').select('id, name').eq('user_id', user.id).order('created_at', { ascending: false })
       setTemplates(tpls ?? [])
       setLoading(false)
@@ -94,6 +140,36 @@ export default function SettingsPage() {
     setSavingProfile(false)
   }
 
+  const validateFiscalId = (val: string) => {
+    if (!val) return true
+    return /^(\d{8}[A-Za-z]|[XYZxyz]\d{7}[A-Za-z]|[A-HJNPQRSUVWa-hjnpqrsuvw]\d{7}[0-9A-Ja-j])$/.test(val)
+  }
+
+  const handleSaveFiscal = async () => {
+    if (!userId) return
+    if (fiscalId && !validateFiscalId(fiscalId)) {
+      setFiscalIdError('Formato no válido (DNI: 8 dígitos+letra · NIE: X/Y/Z+7+letra · CIF: letra+7+control)')
+      return
+    }
+    setFiscalIdError('')
+    setSavingFiscal(true); setFiscalMsg('')
+    const { error } = await supabase.from('profiles').upsert({
+      user_id: userId,
+      fiscal_name: fiscalName || null,
+      fiscal_id: fiscalId || null,
+      fiscal_address: fiscalAddress || null,
+      fiscal_postal_code: fiscalPostalCode || null,
+      fiscal_city: fiscalCity || null,
+      fiscal_province: fiscalProvince || null,
+      fiscal_country: fiscalCountry || 'España',
+      default_vat_rate: defaultVatRate,
+      default_irpf_enabled: defaultIrpfEnabled,
+      default_irpf_rate: defaultIrpfEnabled ? defaultIrpfRate : null,
+    }, { onConflict: 'user_id' })
+    setFiscalMsg(error ? 'Error: ' + error.message : '✓ Datos fiscales guardados')
+    setSavingFiscal(false)
+  }
+
   const handleDeleteTemplate = async (id: string) => {
     setDeletingTpl(id)
     await supabase.from('templates').delete().eq('id', id)
@@ -117,24 +193,6 @@ export default function SettingsPage() {
       Cargando...
     </div>
   )
-
-  const Section = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ background: 'var(--bg-card)', border: `0.5px solid ${border}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '10px' }}>
-      {children}
-    </div>
-  )
-
-  const SectionHeader = ({ label }: { label: string }) => (
-    <div style={{ borderBottom: `0.5px solid ${border}`, padding: '13px 18px' }}>
-      <p style={{ fontSize: '11px', color: mid, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>{label}</p>
-    </div>
-  )
-
-  const Msg = ({ text }: { text: string }) => text ? (
-    <div style={{ background: text.startsWith('✓') ? '#EAF3DE' : '#FEE', border: `0.5px solid ${text.startsWith('✓') ? '#639922' : '#A32D2D'}30`, borderRadius: '8px', padding: '9px 12px', marginBottom: '14px' }}>
-      <p style={{ fontSize: '12px', color: text.startsWith('✓') ? '#3B6D11' : '#A32D2D', margin: 0 }}>{text}</p>
-    </div>
-  ) : null
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'system-ui, -apple-system, sans-serif', color: ink }}>
@@ -223,6 +281,120 @@ export default function SettingsPage() {
             <button onClick={handleSaveProfile} disabled={savingProfile}
               style={{ background: savingProfile ? 'var(--bg-surface)' : primary, color: savingProfile ? mid : '#fff', border: 'none', borderRadius: '8px', padding: isMobile ? '12px 20px' : '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingProfile ? 'default' : 'pointer', fontFamily: 'inherit', minHeight: isMobile ? '44px' : 'auto' }}>
               {savingProfile ? 'Guardando...' : 'Guardar perfil'}
+            </button>
+          </div>
+        </Section>
+
+        {/* Datos fiscales */}
+        <Section>
+          <SectionHeader label="Datos fiscales" />
+          <div style={{ padding: '18px' }}>
+            <p style={{ fontSize: '12px', color: mid, margin: '0 0 16px', lineHeight: '1.5' }}>
+              Aparecen en tus propuestas como datos del emisor. Requeridos para propuestas con valor legal.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Nombre fiscal / razón social</label>
+                <input style={inp} type="text" placeholder="Tu nombre o CIF de empresa" value={fiscalName} onChange={e => setFiscalName(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>NIF / CIF</label>
+                <input
+                  style={{ ...inp, borderColor: fiscalIdError ? '#A32D2D' : undefined }}
+                  type="text"
+                  placeholder="12345678A / X1234567B / B12345678"
+                  value={fiscalId}
+                  onChange={e => { setFiscalId(e.target.value.toUpperCase()); setFiscalIdError('') }}
+                />
+                {fiscalIdError && <p style={{ fontSize: '11px', color: '#A32D2D', margin: '4px 0 0' }}>{fiscalIdError}</p>}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Dirección fiscal</label>
+              <input style={inp} type="text" placeholder="Calle, número, piso..." value={fiscalAddress} onChange={e => setFiscalAddress(e.target.value)} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '120px 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>C.P.</label>
+                <input style={inp} type="text" placeholder="28001" maxLength={5} value={fiscalPostalCode} onChange={e => setFiscalPostalCode(e.target.value.replace(/\D/g, ''))} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Ciudad</label>
+                <input style={inp} type="text" placeholder="Madrid" value={fiscalCity} onChange={e => setFiscalCity(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Provincia</label>
+                <input style={inp} type="text" placeholder="Madrid" value={fiscalProvince} onChange={e => setFiscalProvince(e.target.value)} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>País</label>
+              <input style={{ ...inp, maxWidth: isMobile ? '100%' : '200px' }} type="text" value={fiscalCountry} onChange={e => setFiscalCountry(e.target.value)} />
+            </div>
+
+            <div style={{ height: '0.5px', background: border, margin: '0 0 16px' }} />
+
+            <p style={{ fontSize: '11px', color: mid, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px', margin: '0 0 12px' }}>Impuestos por defecto</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>IVA por defecto</label>
+                <select
+                  style={{ ...inp, cursor: 'pointer' }}
+                  value={defaultVatRate}
+                  onChange={e => setDefaultVatRate(e.target.value)}
+                >
+                  <option value="21">21% (general)</option>
+                  <option value="10">10% (reducido)</option>
+                  <option value="4">4% (superreducido)</option>
+                  <option value="exempt">Exento</option>
+                  <option value="isp">Inversión sujeto pasivo (ISP)</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>IRPF retenible</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '37px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDefaultIrpfEnabled(v => !v)}
+                    style={{
+                      width: '40px', height: '22px', borderRadius: '11px', border: 'none', cursor: 'pointer',
+                      background: defaultIrpfEnabled ? primary : border, position: 'relative', flexShrink: 0, transition: 'background 0.2s',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: '3px', left: defaultIrpfEnabled ? '21px' : '3px',
+                      width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+                    }} />
+                  </button>
+                  <span style={{ fontSize: '12px', color: mid }}>{defaultIrpfEnabled ? 'Activado' : 'Desactivado'}</span>
+                </div>
+              </div>
+            </div>
+
+            {defaultIrpfEnabled && (
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '5px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Tipo de IRPF</label>
+                <select
+                  style={{ ...inp, maxWidth: isMobile ? '100%' : '280px', cursor: 'pointer' }}
+                  value={defaultIrpfRate}
+                  onChange={e => setDefaultIrpfRate(e.target.value)}
+                >
+                  <option value="7">7% (nuevos autónomos)</option>
+                  <option value="15">15% (régimen general)</option>
+                </select>
+              </div>
+            )}
+
+            <Msg text={fiscalMsg} />
+
+            <button onClick={handleSaveFiscal} disabled={savingFiscal}
+              style={{ background: savingFiscal ? 'var(--bg-surface)' : primary, color: savingFiscal ? mid : '#fff', border: 'none', borderRadius: '8px', padding: isMobile ? '12px 20px' : '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingFiscal ? 'default' : 'pointer', fontFamily: 'inherit', minHeight: isMobile ? '44px' : 'auto' }}>
+              {savingFiscal ? 'Guardando...' : 'Guardar datos fiscales'}
             </button>
           </div>
         </Section>
