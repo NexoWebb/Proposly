@@ -58,6 +58,22 @@ export default function SettingsPage() {
   const [dark,        setDark]        = useState(false)
   const [menuOpen,    setMenuOpen]    = useState(false)
 
+  // Suscripción
+  type SubscriptionRow = {
+    plan: 'free' | 'pro'
+    status: string
+    current_period_end: string | null
+    cancel_at_period_end: boolean
+    stripe_subscription_id: string | null
+  }
+  const [subscription,      setSubscription]      = useState<SubscriptionRow | null>(null)
+  const [showCancelModal,   setShowCancelModal]   = useState(false)
+  const [cancelLoading,     setCancelLoading]     = useState(false)
+  const [reactivateLoading, setReactivateLoading] = useState(false)
+  const [portalLoading,     setPortalLoading]     = useState(false)
+  const [upgradeLoading,    setUpgradeLoading]    = useState(false)
+  const [subMsg,            setSubMsg]            = useState('')
+
   // Datos fiscales
   const [fiscalName,       setFiscalName]       = useState('')
   const [fiscalId,         setFiscalId]         = useState('')
@@ -103,6 +119,12 @@ export default function SettingsPage() {
       }
       const { data: tpls } = await supabase.from('templates').select('id, name').eq('user_id', user.id).order('created_at', { ascending: false })
       setTemplates(tpls ?? [])
+      const { data: subData } = await supabase
+        .from('subscriptions')
+        .select('plan, status, current_period_end, cancel_at_period_end, stripe_subscription_id')
+        .eq('user_id', user.id)
+        .single()
+      if (subData) setSubscription(subData as SubscriptionRow)
       setLoading(false)
     }
     load()
@@ -168,6 +190,64 @@ export default function SettingsPage() {
     }, { onConflict: 'user_id' })
     setFiscalMsg(error ? 'Error: ' + error.message : '✓ Datos fiscales guardados')
     setSavingFiscal(false)
+  }
+
+  const fmtPeriodEnd = (d: string) =>
+    new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const handleUpgrade = async () => {
+    setUpgradeLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` } })
+      const { url } = await res.json()
+      if (url) window.location.href = url
+    } catch { setSubMsg('Error al procesar el pago. Inténtalo de nuevo.') }
+    finally { setUpgradeLoading(false) }
+  }
+
+  const handlePortal = async () => {
+    setPortalLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe/portal', { method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` } })
+      const { url, error } = await res.json()
+      if (error) { setSubMsg('Error al abrir el portal: ' + error); return }
+      if (url) window.location.href = url
+    } catch { setSubMsg('Error al abrir el portal de facturación.') }
+    finally { setPortalLoading(false) }
+  }
+
+  const handleCancel = async () => {
+    setCancelLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe/cancel', { method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` } })
+      if (res.ok) {
+        setSubscription(prev => prev ? { ...prev, cancel_at_period_end: true } : prev)
+        setSubMsg('✓ Suscripción cancelada. Seguirás siendo Pro hasta el final del período.')
+      } else {
+        const { error } = await res.json()
+        setSubMsg('Error al cancelar: ' + (error ?? 'inténtalo de nuevo'))
+      }
+    } catch { setSubMsg('Error al cancelar la suscripción.') }
+    finally { setCancelLoading(false); setShowCancelModal(false) }
+  }
+
+  const handleReactivate = async () => {
+    setReactivateLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe/reactivate', { method: 'POST', headers: { 'Authorization': `Bearer ${session?.access_token ?? ''}` } })
+      if (res.ok) {
+        setSubscription(prev => prev ? { ...prev, cancel_at_period_end: false } : prev)
+        setSubMsg('✓ Suscripción reactivada. Se renovará automáticamente.')
+      } else {
+        const { error } = await res.json()
+        setSubMsg('Error al reactivar: ' + (error ?? 'inténtalo de nuevo'))
+      }
+    } catch { setSubMsg('Error al reactivar la suscripción.') }
+    finally { setReactivateLoading(false) }
   }
 
   const handleDeleteTemplate = async (id: string) => {
@@ -427,6 +507,81 @@ export default function SettingsPage() {
           </div>
         </Section>
 
+        {/* Plan y suscripción */}
+        <Section>
+          <SectionHeader label="Plan y suscripción" />
+          <div style={{ padding: '18px' }}>
+            <Msg text={subMsg} />
+            {subscription ? (() => {
+              const isPro = subscription.plan === 'pro'
+              const isCanceling = isPro && subscription.cancel_at_period_end
+              const badgeBg    = isPro && !isCanceling ? '#EAF3DE' : isCanceling ? '#FFFBEB' : 'var(--bg-surface)'
+              const badgeColor = isPro && !isCanceling ? '#3B6D11'  : isCanceling ? '#854F0B'  : mid
+              const badgeBorder = isPro && !isCanceling ? '#63992230' : isCanceling ? '#BA751730' : `${border}30`
+              const badgeDot   = isPro && !isCanceling ? '#639922'  : isCanceling ? '#BA7517'  : '#888'
+              return (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: badgeBg, color: badgeColor, borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '500', border: `0.5px solid ${badgeBorder}` }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: badgeDot, flexShrink: 0 }} />
+                      {isPro && !isCanceling && 'Plan Pro'}
+                      {isCanceling && 'Cancelación pendiente'}
+                      {!isPro && 'Plan Gratuito'}
+                    </span>
+                    {isPro && subscription.current_period_end && (
+                      <span style={{ fontSize: '12px', color: mid }}>
+                        {isCanceling
+                          ? `Activo hasta el ${fmtPeriodEnd(subscription.current_period_end)}`
+                          : `Renueva el ${fmtPeriodEnd(subscription.current_period_end)}`}
+                      </span>
+                    )}
+                  </div>
+
+                  {!isPro && (
+                    <p style={{ fontSize: '12px', color: mid, margin: '0 0 16px', lineHeight: '1.5' }}>
+                      3 propuestas al mes. Con Pro, crea propuestas ilimitadas y accede a funciones avanzadas.
+                    </p>
+                  )}
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {isPro && !isCanceling && (
+                      <>
+                        <button onClick={handlePortal} disabled={portalLoading}
+                          style={{ background: primaryLight, border: '0.5px solid #C4CEFC', borderRadius: '8px', padding: isMobile ? '12px 16px' : '8px 16px', fontSize: '13px', color: primary, cursor: portalLoading ? 'default' : 'pointer', fontFamily: 'inherit', fontWeight: '500', opacity: portalLoading ? 0.7 : 1, minHeight: isMobile ? '44px' : 'auto' }}>
+                          {portalLoading ? 'Cargando...' : 'Gestionar facturación'}
+                        </button>
+                        <button onClick={() => setShowCancelModal(true)}
+                          style={{ background: 'none', border: '0.5px solid rgba(162,45,45,0.3)', borderRadius: '8px', padding: isMobile ? '12px 16px' : '8px 16px', fontSize: '13px', color: '#A32D2D', cursor: 'pointer', fontFamily: 'inherit', minHeight: isMobile ? '44px' : 'auto' }}>
+                          Cancelar suscripción
+                        </button>
+                      </>
+                    )}
+                    {isCanceling && (
+                      <button onClick={handleReactivate} disabled={reactivateLoading}
+                        style={{ background: primary, border: 'none', borderRadius: '8px', padding: isMobile ? '12px 16px' : '8px 16px', fontSize: '13px', color: '#fff', cursor: reactivateLoading ? 'default' : 'pointer', fontFamily: 'inherit', fontWeight: '500', opacity: reactivateLoading ? 0.7 : 1, minHeight: isMobile ? '44px' : 'auto' }}>
+                        {reactivateLoading ? 'Procesando...' : 'Reactivar suscripción'}
+                      </button>
+                    )}
+                    {!isPro && (
+                      <button onClick={handleUpgrade} disabled={upgradeLoading}
+                        style={{ background: primary, border: 'none', borderRadius: '8px', padding: isMobile ? '12px 16px' : '8px 16px', fontSize: '13px', color: '#fff', cursor: upgradeLoading ? 'default' : 'pointer', fontFamily: 'inherit', fontWeight: '500', opacity: upgradeLoading ? 0.7 : 1, minHeight: isMobile ? '44px' : 'auto' }}>
+                        {upgradeLoading ? 'Cargando...' : 'Mejora a Pro →'}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )
+            })() : (
+              <p style={{ fontSize: '13px', color: mid, margin: 0, textAlign: 'center', padding: '12px 0' }}>
+                Sin suscripción activa · <button onClick={handleUpgrade} disabled={upgradeLoading}
+                  style={{ background: 'none', border: 'none', color: primary, cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}>
+                  {upgradeLoading ? 'Cargando...' : 'Mejora a Pro'}
+                </button>
+              </p>
+            )}
+          </div>
+        </Section>
+
         {/* Contraseña */}
         <Section>
           <SectionHeader label="Seguridad" />
@@ -446,6 +601,35 @@ export default function SettingsPage() {
         </Section>
 
       </div>
+
+      {/* Modal cancelar suscripción */}
+      {showCancelModal && (
+        <div onClick={() => setShowCancelModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: isMobile ? '24px 20px' : '28px 24px', maxWidth: '400px', width: '100%' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '500', color: ink, margin: '0 0 10px', letterSpacing: '-0.3px' }}>
+              ¿Cancelar suscripción?
+            </h2>
+            <p style={{ fontSize: '13px', color: mid, margin: '0 0 20px', lineHeight: '1.6' }}>
+              {subscription?.current_period_end
+                ? <>Seguirás siendo Pro hasta el <strong style={{ color: ink }}>{fmtPeriodEnd(subscription.current_period_end)}</strong>. Después volverás al plan Free y podrás crear 3 propuestas al mes.</>
+                : 'Después de cancelar volverás al plan Free y podrás crear 3 propuestas al mes.'}
+            </p>
+            <button
+              onClick={handleCancel}
+              disabled={cancelLoading}
+              style={{ width: '100%', background: '#A32D2D', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: cancelLoading ? 'default' : 'pointer', fontFamily: 'inherit', marginBottom: '8px', opacity: cancelLoading ? 0.7 : 1, minHeight: '44px' }}>
+              {cancelLoading ? 'Procesando...' : 'Cancelar suscripción'}
+            </button>
+            <button
+              onClick={() => setShowCancelModal(false)}
+              style={{ width: '100%', background: 'none', border: 'none', color: mid, fontSize: '13px', cursor: 'pointer', padding: '8px', fontFamily: 'inherit' }}>
+              Mantener Pro
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

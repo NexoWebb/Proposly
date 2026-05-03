@@ -75,6 +75,8 @@ export default function DashboardPage() {
   const [dark, setDark] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetId, setSheetId] = useState<string | null>(null)
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -82,6 +84,25 @@ export default function DashboardPage() {
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
   }, [menuOpen])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const payment = params.get('payment')
+    if (payment === 'success') {
+      setToast({ msg: 'Bienvenido a Pro. Ya puedes crear propuestas ilimitadas.', type: 'success' })
+      router.replace('/dashboard')
+    } else if (payment === 'canceled') {
+      setToast({ msg: 'Pago cancelado. Sigues en el plan gratuito.', type: 'error' })
+      router.replace('/dashboard')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 5000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains('dark'))
@@ -156,7 +177,7 @@ export default function DashboardPage() {
 
   const handleDuplicate = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    if (!canCreate) { handleUpgrade(); return }
+    if (!canCreate) { setShowLimitModal(true); return }
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setLoading(true)
@@ -273,9 +294,13 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
           <div>
             <h1 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 2px', letterSpacing: '-0.3px' }}>Propuestas</h1>
-            <p style={{ fontSize: '12px', color: mid, margin: 0 }}>{proposals.length} propuestas en total</p>
+            <p style={{ fontSize: '12px', color: mid, margin: 0 }}>
+              {subscription?.plan === 'pro'
+                ? 'Plan Pro · propuestas ilimitadas'
+                : `${thisMonth} de 3 propuestas este mes · Plan Gratuito`}
+            </p>
           </div>
-          <button onClick={() => canCreate ? router.push('/editor') : handleUpgrade()} disabled={upgradeLoading}
+          <button onClick={() => { if (!canCreate) { setShowLimitModal(true); return }; router.push('/editor') }} disabled={upgradeLoading}
             style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap', opacity: upgradeLoading ? 0.6 : 1 }}>
             {upgradeLoading ? 'Cargando...' : '+ Nueva propuesta'}
           </button>
@@ -351,7 +376,7 @@ export default function DashboardPage() {
                 {filter === 'all' ? 'Crea tu primera propuesta para empezar' : 'No hay propuestas con este filtro'}
               </p>
               {filter === 'all' && (
-                <button onClick={() => canCreate ? router.push('/editor') : handleUpgrade()} disabled={upgradeLoading}
+                <button onClick={() => { if (!canCreate) { setShowLimitModal(true); return }; router.push('/editor') }} disabled={upgradeLoading}
                   style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Crear propuesta
                 </button>
@@ -440,6 +465,64 @@ export default function DashboardPage() {
           })}
         </div>
       </div>
+
+      {/* Limit modal */}
+      {showLimitModal && (
+        <div onClick={() => setShowLimitModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: card, borderRadius: '16px', padding: isMobile ? '24px 20px' : '28px 24px', maxWidth: '400px', width: '100%' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '500', color: ink, margin: '0 0 8px', letterSpacing: '-0.3px' }}>
+              Límite del plan gratuito
+            </h2>
+            <p style={{ fontSize: '13px', color: mid, margin: '0 0 20px', lineHeight: '1.6' }}>
+              Has creado 3 propuestas este mes. Con <strong style={{ color: ink }}>Pro</strong> puedes crear propuestas ilimitadas, sin restricciones.
+            </p>
+            <button
+              onClick={() => { setShowLimitModal(false); handleUpgrade() }}
+              disabled={upgradeLoading}
+              style={{ width: '100%', background: primary, color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: upgradeLoading ? 'default' : 'pointer', fontFamily: 'inherit', marginBottom: '8px', opacity: upgradeLoading ? 0.7 : 1, minHeight: '44px' }}>
+              {upgradeLoading ? 'Cargando...' : 'Mejora a Pro →'}
+            </button>
+            <button
+              onClick={() => setShowLimitModal(false)}
+              style={{ width: '100%', background: 'none', border: 'none', color: mid, fontSize: '13px', cursor: 'pointer', padding: '8px', fontFamily: 'inherit' }}>
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: isMobile ? '24px' : '32px',
+          right: isMobile ? '16px' : '32px',
+          left: isMobile ? '16px' : 'auto',
+          background: toast.type === 'success' ? '#EAF3DE' : '#FEE2E2',
+          border: `0.5px solid ${toast.type === 'success' ? '#63992230' : '#A32D2D30'}`,
+          borderRadius: '12px',
+          padding: '14px 16px',
+          zIndex: 100,
+          maxWidth: '380px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
+          <span style={{ fontSize: '15px', color: toast.type === 'success' ? '#3B6D11' : '#A32D2D', flexShrink: 0 }}>
+            {toast.type === 'success' ? '✓' : '✕'}
+          </span>
+          <p style={{ fontSize: '13px', color: toast.type === 'success' ? '#3B6D11' : '#A32D2D', margin: 0, fontWeight: '500', flex: 1 }}>
+            {toast.msg}
+          </p>
+          <button onClick={() => setToast(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: mid, fontSize: '18px', padding: '0 0 0 4px', lineHeight: 1, flexShrink: 0 }}>
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Mobile action sheet */}
       {sheetId && isMobile && (() => {
