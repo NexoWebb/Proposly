@@ -217,12 +217,6 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
                   </div>
                 )
               })}
-              <div className="proposal-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#4A7FA5', borderRadius: '12px', marginTop: '20px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', fontFamily: 'sans-serif' }}>Subtotal de sección</span>
-                <span style={{ color: '#ffffff', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px' }}>
-                  {svcSelectedTotal.toLocaleString('es-ES')}€
-                </span>
-              </div>
             </div>
           )
         }

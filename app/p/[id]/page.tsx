@@ -46,7 +46,7 @@ export default async function ProposalPublicPage({
           <div style={{ fontSize: '56px', marginBottom: '24px' }}>⏰</div>
           <h1 style={{ fontSize: '24px', fontWeight: '400', color: '#1A1208', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>Esta propuesta ha caducado</h1>
           <p style={{ fontSize: '14px', color: '#8C7B6B', margin: '0 0 8px' }}>La fecha de validez era el <strong style={{ color: '#1A1208' }}>{expiryDate}</strong>.</p>
-          <p style={{ fontSize: '14px', color: '#8C7B6B', margin: 0 }}>Contacta con nosotros para recibir una propuesta actualizada.</p>
+          <p style={{ fontSize: '14px', color: '#8C7B6B', margin: 0 }}>Contacta con el emisor para recibir una propuesta actualizada.</p>
         </div>
       </div>
     )
@@ -89,7 +89,7 @@ export default async function ProposalPublicPage({
             {proposal.title}
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', margin: 0, fontFamily: 'sans-serif' }}>
-            Preparada para {proposal.client_name}
+            Preparada para {proposal.client_name || 'ti'}
           </p>
         </div>
       </div>

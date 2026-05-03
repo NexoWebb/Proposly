@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
             Confirmación de aceptación
           </h1>
           <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 24px">
-            Hola <strong>${proposal.client_name}</strong>, has aceptado la propuesta
+            Hola <strong>${proposal.client_name || 'cliente'}</strong>, has aceptado la propuesta
             <strong>${proposal.title}</strong>. A continuación el resumen de lo acordado:
           </p>
           ${servicesHtml}
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     await resend.emails.send({
       from: 'Proposly <onboarding@resend.dev>',
       to: ownerEmail,
-      subject: `🎉 ${proposal.client_name} ha aceptado tu propuesta`,
+      subject: `🎉 ${proposal.client_name || 'Tu cliente'} ha aceptado tu propuesta`,
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:32px">
@@ -160,11 +160,11 @@ export async function POST(request: NextRequest) {
             ¡Propuesta aceptada!
           </h1>
           <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 24px">
-            <strong>${proposal.client_name}</strong> ha aceptado la propuesta
+            <strong>${proposal.client_name || 'Tu cliente'}</strong> ha aceptado la propuesta
             <strong>${proposal.title}</strong>. Firmado por: ${signerName}.
           </p>
           <a href="${appUrl}/dashboard" style="display:inline-block;background:#0f0f0f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px">
-            Ver en el dashboard →
+            Ver propuesta →
           </a>
         </div>
       `,

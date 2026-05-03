@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
           <span style="font-size:14px;font-weight:500">Proposly</span>
         </div>
         <h1 style="font-size:20px;font-weight:400;margin:0 0 8px;font-family:Georgia,serif">
-          Hola, ${proposal.client_name}
+          Hola, ${proposal.client_name || 'cliente'}
         </h1>
         <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 24px">
           Tienes una nueva propuesta lista para revisar: <strong>${proposal.title}</strong>.
