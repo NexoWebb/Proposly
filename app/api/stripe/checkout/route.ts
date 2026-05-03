@@ -22,23 +22,31 @@ export async function POST(request: NextRequest) {
 
     let customerId = subscription?.stripe_customer_id
 
-    // Crear customer en Stripe si no existe
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { supabase_uid: user.id },
-      })
-      customerId = customer.id
-
-      // Insertar en subscriptions con customer_id
-      await supabaseAdmin
-        .from('subscriptions')
-        .insert({
-          user_id: user.id,
-          stripe_customer_id: customerId,
-          plan: 'free',
-          status: 'active',
+    if (customerId) {
+      console.log(`[Stripe] Reusing customer from DB: ${customerId}`)
+    } else {
+      // Buscar en Stripe por email antes de crear uno nuevo
+      const existing = await stripe.customers.list({ email: user.email!, limit: 1 })
+      if (existing.data.length > 0) {
+        customerId = existing.data[0].id
+        console.log(`[Stripe] Reusing customer found in Stripe: ${customerId}`)
+      } else {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          metadata: { supabase_uid: user.id },
         })
+        customerId = customer.id
+        console.log(`[Stripe] Created new Stripe customer: ${customerId}`)
+      }
+
+      // Guardar en BD inmediatamente — no esperar al webhook
+      const { error: upsertErr } = await supabaseAdmin
+        .from('subscriptions')
+        .upsert(
+          { user_id: user.id, stripe_customer_id: customerId, plan: 'free', status: 'active' },
+          { onConflict: 'user_id' }
+        )
+      if (upsertErr) console.error('[Stripe] Failed to save customer to DB:', upsertErr.message)
     }
 
     // Crear sesión de checkout

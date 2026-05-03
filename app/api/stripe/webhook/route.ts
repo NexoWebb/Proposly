@@ -75,26 +75,11 @@ export async function POST(request: NextRequest) {
             current_period_end: getPeriodEnd(sub),
           }
 
-          const { data: existing } = await supabaseAdmin
+          const { error } = await supabaseAdmin
             .from('subscriptions')
-            .select('id')
-            .eq('user_id', userId)
-            .single()
-
-          if (existing) {
-            const { error } = await supabaseAdmin
-              .from('subscriptions')
-              .update(payload)
-              .eq('user_id', userId)
-            if (error) console.error('[Stripe] update failed:', error.message)
-            else console.log(`[Stripe] Subscription updated for user ${userId}`)
-          } else {
-            const { error } = await supabaseAdmin
-              .from('subscriptions')
-              .insert({ user_id: userId, ...payload })
-            if (error) console.error('[Stripe] insert failed:', error.message)
-            else console.log(`[Stripe] Subscription inserted for user ${userId}`)
-          }
+            .upsert({ user_id: userId, ...payload }, { onConflict: 'user_id' })
+          if (error) console.error('[Stripe] upsert failed:', error.message)
+          else console.log(`[Stripe] Subscription upserted for user ${userId}`)
         }
       }
     }
