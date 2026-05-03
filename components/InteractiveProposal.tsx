@@ -6,14 +6,32 @@ import jsPDF from 'jspdf'
 import type { Block, Service, TimelineItem } from '@/components/BlockEditor'
 import AcceptButton from './AcceptButton'
 
+interface FiscalParty {
+  fiscalName: string
+  fiscalId: string
+  fiscalAddress: string
+  fiscalCity?: string
+}
+
 interface Props {
   initialBlocks: Block[]
   proposalId: string
   signed: boolean
   autoExport?: boolean
+  vatRate?: string
+  irpfEnabled?: boolean
+  irpfRate?: string
+  emisor?: FiscalParty | null
+  cliente?: FiscalParty | null
+  proposalTitle?: string
+  clientName?: string
 }
 
-export default function InteractiveProposal({ initialBlocks, proposalId, signed, autoExport }: Props) {
+function slugify(s: string) {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+export default function InteractiveProposal({ initialBlocks, proposalId, signed, autoExport, vatRate = '21', irpfEnabled = false, irpfRate = '15', emisor = null, cliente = null, proposalTitle = '', clientName = '' }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(() => {
     return initialBlocks.map(b => {
       if (b.type === 'services') {
@@ -51,6 +69,15 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
 
   const currentTotal = calculateTotal()
 
+  const vatNum = ['21','10','4'].includes(vatRate) ? Number(vatRate) : 0
+  const irpfNum = irpfEnabled ? Number(irpfRate) : 0
+  const vatAmount = Math.round(currentTotal * vatNum) / 100
+  const irpfAmount = Math.round(currentTotal * irpfNum) / 100
+  const grandTotal = currentTotal + vatAmount - irpfAmount
+
+  const fmtEur = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
+  const showFiscal = !!(emisor || cliente)
+
   const handleDownloadPDF = async () => {
     const element = document.getElementById('proposal-content')
     if (!element) return
@@ -81,7 +108,9 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
     })
 
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight)
-    pdf.save(`propuesta-${proposalId}.pdf`)
+    const titleSlug = slugify(proposalTitle) || proposalId
+    const clientSlug = slugify(clientName) || 'cliente'
+    pdf.save(`Propuesta-${titleSlug}-${clientSlug}.pdf`)
   }
 
   useEffect(() => {
@@ -245,16 +274,81 @@ export default function InteractiveProposal({ initialBlocks, proposalId, signed,
         return null
       })}
 
-      {currentTotal > 0 && blocks.filter(b => b.type === 'services').length > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#0F2A3D', borderRadius: '12px', margin: '8px 0 32px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>Total global sin IVA</span>
-          <span style={{ color: '#ffffff', fontSize: '26px', fontWeight: '400', letterSpacing: '-0.5px' }}>
-            {currentTotal.toLocaleString('es-ES')}€
-          </span>
+      {/* Desglose económico final */}
+      {currentTotal > 0 && (
+        <div style={{ background: '#0F2A3D', borderRadius: '12px', margin: '8px 0 32px', padding: '20px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>Subtotal</span>
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', fontFamily: 'sans-serif', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(currentTotal)}</span>
+          </div>
+
+          {vatRate === 'exempt' ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>IVA (Exento)</span>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>0,00 €</span>
+            </div>
+          ) : vatRate === 'isp' ? (
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>IVA: Inversión sujeto pasivo</span>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>—</span>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontFamily: 'sans-serif', margin: '3px 0 0', fontStyle: 'italic' }}>
+                El cliente declarará el IVA conforme al art. 84 LIVA
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>IVA ({vatRate}%)</span>
+              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', fontFamily: 'sans-serif', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(vatAmount)}</span>
+            </div>
+          )}
+
+          {irpfEnabled && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: 'sans-serif' }}>IRPF (-{irpfRate}%)</span>
+              <span style={{ color: '#FCA5A5', fontSize: '14px', fontFamily: 'sans-serif', fontVariantNumeric: 'tabular-nums' }}>-{fmtEur(irpfAmount)}</span>
+            </div>
+          )}
+
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', fontFamily: 'sans-serif' }}>Total</span>
+            <span style={{ color: '#ffffff', fontSize: '26px', fontWeight: '400', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+              {fmtEur(grandTotal)}
+            </span>
+          </div>
         </div>
       )}
 
       <div style={{ height: '1px', background: '#B8D4E8', margin: '32px 0' }} />
+
+      {/* Bloque fiscal (incluido en PDF) */}
+      {showFiscal && (
+        <div style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid #B8D4E8', borderRadius: '12px', padding: '20px 24px', margin: '0 0 32px', fontFamily: 'sans-serif' }}>
+          <p style={{ fontSize: '10px', color: '#5A7A8F', letterSpacing: '2px', textTransform: 'uppercase', margin: '0 0 16px' }}>Partes de la operación</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {emisor && (
+              <div>
+                <p style={{ fontSize: '10px', color: '#5A7A8F', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px', fontWeight: '700' }}>Emisor</p>
+                {emisor.fiscalName && <p style={{ fontSize: '13px', color: '#0F2A3D', margin: '0 0 3px', fontWeight: '600' }}>{emisor.fiscalName}</p>}
+                {emisor.fiscalId && <p style={{ fontSize: '12px', color: '#5A7A8F', margin: '0 0 3px' }}>NIF/CIF: {emisor.fiscalId}</p>}
+                {emisor.fiscalAddress && <p style={{ fontSize: '12px', color: '#5A7A8F', margin: '0 0 3px' }}>{emisor.fiscalAddress}</p>}
+                {emisor.fiscalCity && <p style={{ fontSize: '12px', color: '#5A7A8F', margin: 0 }}>{emisor.fiscalCity}</p>}
+              </div>
+            )}
+            {cliente && (
+              <div>
+                <p style={{ fontSize: '10px', color: '#5A7A8F', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px', fontWeight: '700' }}>Cliente</p>
+                {cliente.fiscalName && <p style={{ fontSize: '13px', color: '#0F2A3D', margin: '0 0 3px', fontWeight: '600' }}>{cliente.fiscalName}</p>}
+                {cliente.fiscalId && <p style={{ fontSize: '12px', color: '#5A7A8F', margin: '0 0 3px' }}>NIF/CIF: {cliente.fiscalId}</p>}
+                {cliente.fiscalAddress && <p style={{ fontSize: '12px', color: '#5A7A8F', margin: 0 }}>{cliente.fiscalAddress}</p>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Acciones excluidas del PDF */}
       <div data-html2canvas-ignore="true" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

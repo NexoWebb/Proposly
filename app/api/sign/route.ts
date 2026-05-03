@@ -20,13 +20,33 @@ export async function POST(request: NextRequest) {
       selected: s.selected !== false,
     }))
 
+  // Leer tax config antes del update para calcular el total neto correcto
+  const { data: taxConfig } = await supabaseAdmin
+    .from('proposals')
+    .select('vat_rate, irpf_enabled, irpf_rate')
+    .eq('id', id)
+    .single()
+
+  const subtotal = Number(finalTotal ?? 0)
+  const vatRate = taxConfig?.vat_rate ?? '21'
+  const irpfEnabled = taxConfig?.irpf_enabled ?? false
+  const irpfRate = taxConfig?.irpf_rate ?? '15'
+  const vatNum = ['21','10','4'].includes(vatRate) ? Number(vatRate) : 0
+  const irpfNum = irpfEnabled ? Number(irpfRate) : 0
+  const vatAmount = Math.round(subtotal * vatNum) / 100
+  const irpfAmount = Math.round(subtotal * irpfNum) / 100
+  const grandTotal = subtotal + vatAmount - irpfAmount
+
   const { data: proposal, error } = await supabaseAdmin
     .from('proposals')
     .update({
       status: 'signed',
       signed_at: new Date().toISOString(),
       signer_name: signerName,
-      ...(finalTotal !== undefined ? { total_amount: finalTotal } : {}),
+      total_amount: grandTotal,
+      signed_subtotal: subtotal,
+      signed_vat_amount: vatAmount,
+      signed_irpf_amount: irpfAmount,
       ...(finalBlocks !== undefined ? { blocks: finalBlocks } : {}),
       ...(allOptionals.length > 0 ? { signed_selections: allOptionals } : {}),
     })
@@ -47,12 +67,30 @@ export async function POST(request: NextRequest) {
   const optServices  = allServices.filter(s => s.optional)
   const acceptedOpts = optServices.filter(s => s.selected !== false)
   const rejectedOpts = optServices.filter(s => s.selected === false)
+  const fmtEur = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
 
-  const rowHtml = (s: SvcLine, dim = false) => `
+  const vatLabel = vatRate === 'exempt' ? 'IVA (Exento)' : vatRate === 'isp' ? 'IVA (ISP)' : `IVA (${vatRate}%)`
+  const vatValue = vatRate === 'exempt' ? '0,00 €' : vatRate === 'isp' ? '—' : fmtEur(vatAmount)
+
+  const taxSummaryHtml = `
+    <tr><td colspan="2" style="padding:12px 0 6px"><hr style="border:none;border-top:1px solid #eee;margin:0"/></td></tr>
     <tr>
-      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:${dim ? '#aaa' : '#333'};text-decoration:${dim ? 'line-through' : 'none'}">${s.name}</td>
-      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:${dim ? '#aaa' : '#333'};text-align:right;white-space:nowrap;text-decoration:${dim ? 'line-through' : 'none'}">${Number(s.price).toLocaleString('es-ES')}€</td>
-    </tr>`
+      <td style="padding:4px 0;font-size:13px;color:#666">Subtotal</td>
+      <td style="padding:4px 0;font-size:13px;color:#666;text-align:right;white-space:nowrap">${fmtEur(subtotal)}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 0;font-size:13px;color:#666">${vatLabel}</td>
+      <td style="padding:4px 0;font-size:13px;color:#666;text-align:right;white-space:nowrap">${vatValue}</td>
+    </tr>
+    ${irpfEnabled ? `<tr>
+      <td style="padding:4px 0;font-size:13px;color:#666">IRPF (-${irpfRate}%)</td>
+      <td style="padding:4px 0;font-size:13px;color:#c0392b;text-align:right;white-space:nowrap">-${fmtEur(irpfAmount)}</td>
+    </tr>` : ''}
+    <tr>
+      <td style="padding:10px 0 0;font-size:15px;font-weight:700;color:#0f0f0f">Total</td>
+      <td style="padding:10px 0 0;font-size:18px;font-weight:700;color:#0f0f0f;text-align:right">${fmtEur(grandTotal)}</td>
+    </tr>
+  `
 
   const servicesHtml = allServices.length > 0
     ? `
@@ -66,13 +104,10 @@ export async function POST(request: NextRequest) {
           <tr><td colspan="2" style="padding:10px 0 4px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Opcionales no incluidos</td></tr>
           ${rejectedOpts.map(s => rowHtml(s, true)).join('')}
         ` : ''}
-        <tr>
-          <td style="padding:12px 0 0;font-size:14px;font-weight:600;color:#0f0f0f">Total sin IVA</td>
-          <td style="padding:12px 0 0;font-size:16px;font-weight:600;color:#0f0f0f;text-align:right">${Number(finalTotal ?? 0).toLocaleString('es-ES')}€</td>
-        </tr>
+        ${taxSummaryHtml}
       </table>
     `
-    : ''
+    : `<table style="width:100%;border-collapse:collapse;margin:0 0 20px">${taxSummaryHtml}</table>`
 
   // Email al cliente — confirmación con resumen
   if (proposal.client_email) {

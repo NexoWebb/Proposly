@@ -28,7 +28,7 @@ export default async function ProposalPublicPage({
 
   const { data: profile } = await supabaseAdmin
     .from('profiles')
-    .select('name, logo_url')
+    .select('name, logo_url, fiscal_name, fiscal_id, fiscal_address, fiscal_city')
     .eq('user_id', proposal.user_id)
     .single()
 
@@ -99,6 +99,21 @@ export default async function ProposalPublicPage({
         proposalId={id}
         signed={proposal.status === 'signed'}
         autoExport={autoExport}
+        vatRate={proposal.vat_rate ?? '21'}
+        irpfEnabled={proposal.irpf_enabled ?? false}
+        irpfRate={proposal.irpf_rate ?? '15'}
+        emisor={
+          (profile?.fiscal_name || profile?.fiscal_id || profile?.fiscal_address)
+            ? { fiscalName: profile?.fiscal_name ?? '', fiscalId: profile?.fiscal_id ?? '', fiscalAddress: profile?.fiscal_address ?? '', fiscalCity: profile?.fiscal_city ?? '' }
+            : null
+        }
+        cliente={
+          (proposal.client_fiscal_name || proposal.client_fiscal_id || proposal.client_fiscal_address)
+            ? { fiscalName: proposal.client_fiscal_name ?? '', fiscalId: proposal.client_fiscal_id ?? '', fiscalAddress: proposal.client_fiscal_address ?? '' }
+            : null
+        }
+        proposalTitle={proposal.title ?? ''}
+        clientName={proposal.client_name ?? ''}
       />
     </div>
   )
