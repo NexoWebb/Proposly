@@ -264,7 +264,7 @@ export default function DashboardPage() {
             </div>
             <button onClick={handleUpgrade} disabled={upgradeLoading}
               style={{ background: primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: upgradeLoading ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: upgradeLoading ? 0.6 : 1 }}>
-              {upgradeLoading ? 'Cargando...' : 'Upgrade a Pro'}
+              {upgradeLoading ? 'Cargando...' : 'Mejora a Pro'}
             </button>
           </div>
         )}
