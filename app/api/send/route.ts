@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const { data: proposal, error: fetchError } = await supabaseAdmin
     .from('proposals')
-    .select('title, client_name, client_email')
+    .select('title, client_name, client_email, public_token')
     .eq('id', id)
     .single()
 
@@ -40,8 +40,17 @@ export async function POST(request: NextRequest) {
   if (!proposal) return NextResponse.json({ error: 'Propuesta no encontrada' }, { status: 404 })
   if (!proposal.client_email) return NextResponse.json({ error: 'El cliente no tiene email configurado' }, { status: 400 })
 
+  let publicToken = proposal.public_token as string | null
+  if (!publicToken) {
+    publicToken = crypto.randomUUID()
+    await supabaseAdmin.from('proposals').update({ public_token: publicToken }).eq('id', id)
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://proposly-kappa.vercel.app'
-  const proposalUrl = `${appUrl}/p/${id}`
+  const proposalUrl = `${appUrl}/p/${publicToken}`
+
+  const safeClientName = escapeHtml(proposal.client_name ?? '')
+  const safeTitle = escapeHtml(proposal.title ?? '')
 
   // 1. Intentar enviar el email
   const { error: emailError } = await resend.emails.send({
@@ -55,10 +64,10 @@ export async function POST(request: NextRequest) {
           <span style="font-size:14px;font-weight:500">Proposly</span>
         </div>
         <h1 style="font-size:20px;font-weight:400;margin:0 0 8px;font-family:Georgia,serif">
-          Hola, ${proposal.client_name || 'cliente'}
+          Hola, ${safeClientName}
         </h1>
         <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 24px">
-          Tienes una nueva propuesta lista para revisar: <strong>${proposal.title}</strong>.
+          Tienes una nueva propuesta lista para revisar: <strong>${safeTitle}</strong>.
         </p>
         ${message ? `<div style="background:#f8f9fa;border-left:3px solid #ddd;border-radius:6px;padding:14px 18px;margin:0 0 24px"><p style="color:#555;font-size:14px;line-height:1.6;margin:0;font-style:italic">${escapeHtml(message)}</p></div>` : ''}
         <a href="${proposalUrl}" style="display:inline-block;background:#0f0f0f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px">

@@ -2,6 +2,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const APP_URL = 'https://proposly-kappa.vercel.app'
 
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
+
 Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -12,7 +15,7 @@ Deno.serve(async () => {
 
   const { data: proposals, error } = await supabase
     .from('proposals')
-    .select('id, title, client_name, client_email')
+    .select('id, public_token, title, client_name, client_email')
     .eq('status', 'sent')
     .is('opened_at', null)
     .is('reminder_sent_at', null)
@@ -33,6 +36,14 @@ Deno.serve(async () => {
   const errors: string[] = []
 
   for (const proposal of proposals) {
+    if (!proposal.public_token) {
+      console.warn(`Propuesta sin public_token, omitiendo: ${proposal.id}`)
+      continue
+    }
+
+    const safeClientName = escapeHtml(proposal.client_name ?? '')
+    const safeTitle = escapeHtml(proposal.title ?? '')
+
     const html = `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:32px">
@@ -40,17 +51,17 @@ Deno.serve(async () => {
           <span style="font-size:14px;font-weight:500">Proposly</span>
         </div>
         <h1 style="font-size:20px;font-weight:400;margin:0 0 8px;font-family:Georgia,serif">
-          Hola, ${proposal.client_name}
+          Hola, ${safeClientName}
         </h1>
         <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 16px">
-          Hace unos días te enviamos la propuesta <strong>${proposal.title}</strong> y queríamos
+          Hace unos días te enviamos la propuesta <strong>${safeTitle}</strong> y queríamos
           asegurarnos de que te llegó bien.
         </p>
         <p style="color:#666;font-size:14px;line-height:1.6;margin:0 0 24px">
           Si aún no has tenido ocasión de revisarla, la tienes disponible en el siguiente enlace.
           Estamos a tu disposición para resolver cualquier duda.
         </p>
-        <a href="${APP_URL}/p/${proposal.id}"
+        <a href="${APP_URL}/p/${proposal.public_token}"
           style="display:inline-block;background:#0f0f0f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px">
           Ver propuesta →
         </a>

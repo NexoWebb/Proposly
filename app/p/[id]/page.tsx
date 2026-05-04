@@ -14,14 +14,14 @@ export default async function ProposalPublicPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ export?: string }>
 }) {
-  const { id } = await params
+  const { id: publicToken } = await params
   const sp = await searchParams
   const autoExport = sp.export === 'true'
 
   const { data: proposal, error } = await supabase
     .from('proposals')
     .select('*')
-    .eq('id', id)
+    .eq('public_token', publicToken)
     .single()
 
   if (error || !proposal) notFound()
@@ -35,7 +35,7 @@ export default async function ProposalPublicPage({
   const expired = !!(proposal.expires_at && new Date() > new Date(proposal.expires_at))
 
   if (!expired && !autoExport && proposal.status !== 'signed') {
-    await trackProposal(id).catch(() => {})
+    await trackProposal(publicToken).catch(() => {})
   }
 
   const blocks: Block[] = proposal.blocks ?? []
@@ -102,7 +102,7 @@ export default async function ProposalPublicPage({
 
       <InteractiveProposal
         initialBlocks={blocks}
-        proposalId={id}
+        publicToken={publicToken}
         signed={proposal.status === 'signed'}
         autoExport={autoExport}
         vatRate={proposal.vat_rate ?? '21'}
