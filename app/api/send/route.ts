@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const { data: proposal, error: fetchError } = await supabaseAdmin
     .from('proposals')
-    .select('title, client_name, client_email')
+    .select('title, client_name, client_email, public_token')
     .eq('id', id)
     .single()
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   if (!proposal.client_email) return NextResponse.json({ error: 'El cliente no tiene email configurado' }, { status: 400 })
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://proposly-kappa.vercel.app'
-  const proposalUrl = `${appUrl}/p/${id}`
+  const proposalUrl = `${appUrl}/p/${proposal.public_token}`
 
   // 1. Intentar enviar el email
   const { error: emailError } = await resend.emails.send({

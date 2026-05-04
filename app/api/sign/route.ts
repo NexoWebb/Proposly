@@ -4,9 +4,43 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+function rowHtml(s: { name: string; price: number }, muted = false) {
+  const fmtEur = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
+  return `<tr>
+    <td style="padding:6px 0;font-size:14px;color:${muted ? '#aaa' : '#333'}">${s.name}</td>
+    <td style="padding:6px 0;font-size:14px;color:${muted ? '#aaa' : '#333'};text-align:right;white-space:nowrap">${fmtEur(s.price)}</td>
+  </tr>`
+}
+
 export async function POST(request: NextRequest) {
-  const { id, signerName, finalTotal, finalBlocks } = await request.json()
-  if (!id || !signerName) return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
+  const { public_token, signerName, finalTotal, finalBlocks } = await request.json()
+  if (!public_token || !signerName) return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
+
+  // Resolver public_token → id interno y validar estado antes de operar
+  const { data: existing } = await supabaseAdmin
+    .from('proposals')
+    .select('id, status, expires_at, vat_rate, irpf_enabled, irpf_rate')
+    .eq('public_token', public_token)
+    .single()
+
+  if (!existing) {
+    console.error('[sign] token no encontrado:', public_token)
+    return NextResponse.json({ error: 'Propuesta no disponible' }, { status: 404 })
+  }
+  if (existing.status === 'draft') {
+    console.error('[sign] intento de firma en borrador, id:', existing.id)
+    return NextResponse.json({ error: 'Propuesta no disponible' }, { status: 404 })
+  }
+  if (existing.status === 'signed') {
+    console.error('[sign] intento de doble firma, id:', existing.id)
+    return NextResponse.json({ error: 'Propuesta no disponible' }, { status: 409 })
+  }
+  if (existing.expires_at && new Date() > new Date(existing.expires_at)) {
+    console.error('[sign] propuesta expirada, id:', existing.id)
+    return NextResponse.json({ error: 'Propuesta no disponible' }, { status: 409 })
+  }
+
+  const id = existing.id
 
   // Extract optional service selections for dedicated column
   const allOptionals = (finalBlocks ?? [])
@@ -20,18 +54,11 @@ export async function POST(request: NextRequest) {
       selected: s.selected !== false,
     }))
 
-  // Leer tax config antes del update para calcular el total neto correcto
-  const { data: taxConfig } = await supabaseAdmin
-    .from('proposals')
-    .select('vat_rate, irpf_enabled, irpf_rate')
-    .eq('id', id)
-    .single()
-
   const subtotal = Number(finalTotal ?? 0)
-  const vatRate = taxConfig?.vat_rate ?? '21'
-  const irpfEnabled = taxConfig?.irpf_enabled ?? false
-  const irpfRate = taxConfig?.irpf_rate ?? '15'
-  const vatNum = ['21','10','4'].includes(vatRate) ? Number(vatRate) : 0
+  const vatRate = existing.vat_rate ?? '21'
+  const irpfEnabled = existing.irpf_enabled ?? false
+  const irpfRate = existing.irpf_rate ?? '15'
+  const vatNum = ['21', '10', '4'].includes(vatRate) ? Number(vatRate) : 0
   const irpfNum = irpfEnabled ? Number(irpfRate) : 0
   const vatAmount = Math.round(subtotal * vatNum) / 100
   const irpfAmount = Math.round(subtotal * irpfNum) / 100
@@ -57,7 +84,7 @@ export async function POST(request: NextRequest) {
   if (error || !proposal) return NextResponse.json({ error: 'Error al firmar' }, { status: 500 })
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://proposly-kappa.vercel.app'
-  const proposalUrl = `${appUrl}/p/${id}`
+  const proposalUrl = `${appUrl}/p/${public_token}`
 
   // Construir resumen de servicios desde los bloques firmados
   type SvcLine = { name: string; price: number; optional?: boolean; selected?: boolean }
