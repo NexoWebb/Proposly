@@ -1,28 +1,30 @@
-import { supabase } from '@/lib/supabase'
+// SERVER-ONLY — invocar únicamente desde server components y API routes.
+// NUNCA importar desde componentes cliente ('use client').
+// Usa supabaseAdmin (service_role) para que el UPDATE funcione con RLS activo.
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-export async function trackProposal(id: string): Promise<void> {
-  const { data: proposal } = await supabase
+export async function trackProposal(token: string): Promise<void> {
+  const { data: proposal } = await supabaseAdmin
     .from('proposals')
-    .select('opened_at, opened_count, title, client_name, user_id')
-    .eq('id', id)
+    .select('id, opened_at, opened_count, title, client_name, user_id')
+    .eq('public_token', token)
     .single()
 
   if (!proposal) return
 
   const yaAbierta = proposal.opened_count > 0
 
-  await supabase
+  await supabaseAdmin
     .from('proposals')
     .update({
       status: 'opened',
       opened_at: proposal.opened_at ?? new Date().toISOString(),
       opened_count: (proposal.opened_count ?? 0) + 1,
     })
-    .eq('id', id)
+    .eq('id', proposal.id)
 
   if (!yaAbierta) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://proposly-kappa.vercel.app'

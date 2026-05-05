@@ -17,7 +17,7 @@ const mid = 'var(--text-secondary)'
 type Proposal = {
   id: string; title: string; client_name: string; client_email: string | null; status: string
   total_amount: number; created_at: string; sent_at: string | null; signed_at: string | null
-  expires_at: string | null
+  expires_at: string | null; public_token: string
 }
 
 type Subscription = {
@@ -44,17 +44,18 @@ const statusCfg: Record<string, { bg: string; color: string; dot: string; label:
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'opened' | 'signed'
 
-function CopyLinkBtn({ id }: { id: string }) {
+function CopyLinkBtn({ token, isDraft }: { token: string; isDraft: boolean }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
-      onClick={e => {
+      onClick={isDraft ? undefined : e => {
         e.stopPropagation()
-        navigator.clipboard.writeText(`${window.location.origin}/p/${id}`).then(() => {
+        navigator.clipboard.writeText(`${window.location.origin}/p/${token}`).then(() => {
           setCopied(true); setTimeout(() => setCopied(false), 2000)
         })
       }}
-      style={{ background: 'none', border: 'none', fontSize: '12px', color: mid, cursor: 'pointer', padding: '4px 6px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
+      title={isDraft ? 'Envía la propuesta primero' : undefined}
+      style={{ background: 'none', border: 'none', fontSize: '12px', color: mid, cursor: isDraft ? 'not-allowed' : 'pointer', padding: '4px 6px', borderRadius: '6px', whiteSpace: 'nowrap', opacity: isDraft ? 0.5 : 1 }}>
       {copied ? '✓ Copiado' : 'Copiar link'}
     </button>
   )
@@ -415,7 +416,7 @@ export default function DashboardPage() {
                   alignItems: 'center',
                   transition: 'background 0.1s',
                 }}
-                onClick={() => router.push(p.status === 'signed' ? `/p/${p.id}` : `/editor/${p.id}`)}
+                onClick={() => router.push(p.status === 'signed' ? `/p/${p.public_token}` : `/editor/${p.id}`)}
                 onMouseEnter={e => (e.currentTarget.style.background = surface)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
 
@@ -441,10 +442,10 @@ export default function DashboardPage() {
                 </span>
 
                 <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                  <CopyLinkBtn id={p.id} />
+                  <CopyLinkBtn token={p.public_token} isDraft={p.status === 'draft'} />
                   {p.status !== 'signed' && (
                     <button
-                      onClick={e => p.status === 'draft' ? handleMarkAsSent(e, p.id) : (e.stopPropagation(), window.open(`/p/${p.id}`, '_blank'))}
+                      onClick={e => p.status === 'draft' ? handleMarkAsSent(e, p.id) : (e.stopPropagation(), window.open(`/p/${p.public_token}`, '_blank'))}
                       style={{ background: primaryLight, border: 'none', color: primary, borderRadius: '8px', padding: '5px 10px', fontSize: '11px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
                       {p.status === 'draft' ? 'Enviar' : 'Ver'}
                     </button>
@@ -530,9 +531,9 @@ export default function DashboardPage() {
         if (!p) return null
         const close = () => setSheetId(null)
         const stop = (e: React.MouseEvent) => e.stopPropagation()
-        const open = () => { close(); router.push(p.status === 'signed' ? `/p/${p.id}` : `/editor/${p.id}`) }
+        const open = () => { close(); router.push(p.status === 'signed' ? `/p/${p.public_token}` : `/editor/${p.id}`) }
         const send = async (e: React.MouseEvent) => { close(); await handleMarkAsSent(e, p.id) }
-        const copy = () => { navigator.clipboard.writeText(`${window.location.origin}/p/${p.id}`); close() }
+        const copy = () => { navigator.clipboard.writeText(`${window.location.origin}/p/${p.public_token}`); close() }
         const del = async (e: React.MouseEvent) => { close(); await handleDelete(e, p.id) }
         const itemStyle = (danger = false, dim = false): React.CSSProperties => ({
           minHeight: '52px', display: 'flex', alignItems: 'center', padding: '0 18px', fontSize: '15px', color: danger ? '#A32D2D' : dim ? mid : ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', borderTop: `0.5px solid ${border}`, width: '100%'
@@ -549,7 +550,12 @@ export default function DashboardPage() {
               {p.status === 'draft' && (
                 <button onClick={send} style={itemStyle()}>Enviar</button>
               )}
-              <button onClick={copy} style={itemStyle()}>Copiar link</button>
+              <button
+                onClick={p.status === 'draft' ? undefined : copy}
+                title={p.status === 'draft' ? 'Envía la propuesta primero' : undefined}
+                style={{ ...itemStyle(), ...(p.status === 'draft' ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}>
+                Copiar link
+              </button>
               {p.status !== 'signed' && (
                 <button onClick={del} style={itemStyle(true)}>Eliminar</button>
               )}

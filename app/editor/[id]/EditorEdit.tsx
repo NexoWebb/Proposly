@@ -62,6 +62,7 @@ export default function EditorEdit({ id }: { id: string }) {
   const [vatRate,      setVatRate]      = useState('21')
   const [irpfEnabled,  setIrpfEnabled]  = useState(false)
   const [irpfRate,     setIrpfRate]     = useState('15')
+  const [publicToken,  setPublicToken]  = useState('')
 
   useEffect(() => { setDark(document.documentElement.classList.contains('dark')) }, [])
   const toggleTheme = () => { const n = !dark; setDark(n); document.documentElement.classList.toggle('dark', n); localStorage.setItem('theme', n ? 'dark' : 'light') }
@@ -73,7 +74,7 @@ export default function EditorEdit({ id }: { id: string }) {
 
       const { data, error } = await supabase.from('proposals').select('*').eq('id', id).single()
       if (error || !data) { router.replace('/dashboard'); return }
-      if (data.status === 'signed') { router.replace(`/p/${id}`); return }
+      if (data.status === 'signed') { router.replace(`/p/${data.public_token}`); return }
 
       setTitle(data.title ?? '')
       setClientName(data.client_name ?? '')
@@ -83,6 +84,7 @@ export default function EditorEdit({ id }: { id: string }) {
       setValidUntil(data.valid_until ? data.valid_until.split('T')[0] : '')
       setBlocks(normalizeBlocks(data.blocks ?? []))
       setStatus(data.status ?? 'draft')
+      setPublicToken(data.public_token ?? '')
 
       // Si la propuesta no tiene impuestos guardados, cargar defaults del perfil
       if (data.vat_rate) {
@@ -143,7 +145,7 @@ export default function EditorEdit({ id }: { id: string }) {
   }
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/p/${id}`).then(() => {
+    navigator.clipboard.writeText(`${window.location.origin}/p/${publicToken}`).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000)
     })
   }
@@ -245,10 +247,14 @@ export default function EditorEdit({ id }: { id: string }) {
               <div onClick={e => e.stopPropagation()}
                 style={{ position: 'fixed', top: '52px', left: 0, right: 0, background: card, borderBottom: `0.5px solid ${border}`, padding: '8px 16px', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', zIndex: 20 }}>
                 <a href="/dashboard" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid ${border}` }}>← Propuestas</a>
-                <button onClick={() => { setMenuOpen(false); window.open(`/p/${id}`, '_blank') }}
-                  style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}` }}>Vista previa</button>
-                <button onClick={() => { setMenuOpen(false); handleCopyLink() }}
-                  style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}` }}>{copied ? '✓ Copiado' : 'Copiar link'}</button>
+                <button
+                  onClick={status === 'draft' ? undefined : () => { setMenuOpen(false); window.open(`/p/${publicToken}`, '_blank') }}
+                  title={status === 'draft' ? 'Envía la propuesta primero' : undefined}
+                  style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: status === 'draft' ? 'not-allowed' : 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}`, opacity: status === 'draft' ? 0.5 : 1 }}>Vista previa</button>
+                <button
+                  onClick={status === 'draft' ? undefined : () => { setMenuOpen(false); handleCopyLink() }}
+                  title={status === 'draft' ? 'Envía la propuesta primero' : undefined}
+                  style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: status === 'draft' ? 'not-allowed' : 'pointer', textAlign: 'left', borderBottom: `0.5px solid ${border}`, opacity: status === 'draft' ? 0.5 : 1 }}>{copied ? '✓ Copiado' : 'Copiar link'}</button>
                 <a href="/settings" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, textDecoration: 'none', borderBottom: `0.5px solid ${border}` }}>Ajustes</a>
                 <button onClick={() => { setMenuOpen(false); toggleTheme() }}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '44px', padding: '0 8px', fontSize: '14px', color: ink, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
@@ -265,12 +271,16 @@ export default function EditorEdit({ id }: { id: string }) {
             </button>
             {!isBelowDesktop && (
               <>
-                <button onClick={() => window.open(`/p/${id}`, '_blank')}
-                  style={{ background: 'none', border: `0.5px solid ${border}`, color: mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                <button
+                  onClick={status === 'draft' ? undefined : () => window.open(`/p/${publicToken}`, '_blank')}
+                  title={status === 'draft' ? 'Envía la propuesta primero' : undefined}
+                  style={{ background: 'none', border: `0.5px solid ${border}`, color: mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: status === 'draft' ? 'not-allowed' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', opacity: status === 'draft' ? 0.5 : 1 }}>
                   Vista previa
                 </button>
-                <button onClick={handleCopyLink}
-                  style={{ background: 'none', border: `0.5px solid ${border}`, color: copied ? '#639922' : mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                <button
+                  onClick={status === 'draft' ? undefined : handleCopyLink}
+                  title={status === 'draft' ? 'Envía la propuesta primero' : undefined}
+                  style={{ background: 'none', border: `0.5px solid ${border}`, color: copied ? '#639922' : mid, borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: status === 'draft' ? 'not-allowed' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', opacity: status === 'draft' ? 0.5 : 1 }}>
                   {copied ? '✓ Copiado' : 'Copiar link'}
                 </button>
               </>

@@ -2,11 +2,11 @@ import { trackProposal } from '@/lib/trackProposal'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
-  const { id } = await request.json()
+  const { public_token } = await request.json()
 
-  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+  if (!public_token) return new NextResponse(null, { status: 204 })
 
-  await trackProposal(id)
+  await trackProposal(public_token).catch(() => {})
 
-  return NextResponse.json({ ok: true })
+  return new NextResponse(null, { status: 204 })
 }

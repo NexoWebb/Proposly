@@ -27,7 +27,7 @@ export default function AcceptButton({
     const res = await fetch('/api/sign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: proposalId, signerName: name, finalTotal, finalBlocks }),
+      body: JSON.stringify({ public_token: proposalId, signerName: name, finalTotal, finalBlocks }),
     })
     if (!res.ok) {
       setLoading(false)

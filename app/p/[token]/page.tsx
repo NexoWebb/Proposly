@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { notFound } from 'next/navigation'
 import type { Block } from '@/components/BlockEditor'
 import InteractiveProposal from '@/components/InteractiveProposal'
@@ -7,41 +6,37 @@ import { trackProposal } from '@/lib/trackProposal'
 
 export const dynamic = 'force-dynamic'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default async function ProposalPublicPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ token: string }>
   searchParams: Promise<{ export?: string }>
 }) {
-  const { id } = await params
+  const { token } = await params
   const sp = await searchParams
   const autoExport = sp.export === 'true'
 
-  const { data: proposal, error } = await supabase
-    .from('proposals')
-    .select('*')
-    .eq('id', id)
-    .single()
+  if (!UUID_RE.test(token)) notFound()
 
-  if (error || !proposal) notFound()
+  const { data, error } = await supabase.rpc('get_proposal_by_token', { p_token: token })
 
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('name, logo_url, fiscal_name, fiscal_id, fiscal_address, fiscal_city')
-    .eq('user_id', proposal.user_id)
-    .single()
+  if (error || !data || data.length === 0) notFound()
+
+  const proposal = data[0]
 
   const expired = !!(proposal.expires_at && new Date() > new Date(proposal.expires_at))
 
   if (!expired && !autoExport && proposal.status !== 'signed') {
-    await trackProposal(id).catch(() => {})
+    await trackProposal(token).catch(() => {})
   }
 
   const blocks: Block[] = proposal.blocks ?? []
 
-  const hasLogo = !!profile?.logo_url
-  const hasName = !!profile?.name
+  const hasLogo = !!proposal.issuer_logo_url
+  const hasName = !!proposal.issuer_name
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -64,7 +59,7 @@ export default async function ProposalPublicPage({
           {(hasLogo || hasName) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>
               {hasLogo && (
-                <img src={profile!.logo_url!} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} />
+                <img src={proposal.issuer_logo_url!} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} />
               )}
               {hasName && (
                 <span style={{
@@ -80,7 +75,7 @@ export default async function ProposalPublicPage({
                   {!hasLogo && (
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#6EE7B7', flexShrink: 0, display: 'inline-block' }} />
                   )}
-                  {profile!.name}
+                  {proposal.issuer_name}
                 </span>
               )}
             </div>
@@ -102,20 +97,29 @@ export default async function ProposalPublicPage({
 
       <InteractiveProposal
         initialBlocks={blocks}
-        proposalId={id}
+        proposalId={token}
         signed={proposal.status === 'signed'}
         autoExport={autoExport}
         vatRate={proposal.vat_rate ?? '21'}
         irpfEnabled={proposal.irpf_enabled ?? false}
         irpfRate={proposal.irpf_rate ?? '15'}
         emisor={
-          (profile?.fiscal_name || profile?.fiscal_id || profile?.fiscal_address)
-            ? { fiscalName: profile?.fiscal_name ?? '', fiscalId: profile?.fiscal_id ?? '', fiscalAddress: profile?.fiscal_address ?? '', fiscalCity: profile?.fiscal_city ?? '' }
+          (proposal.issuer_fiscal_name || proposal.issuer_fiscal_id || proposal.issuer_fiscal_address)
+            ? {
+                fiscalName: proposal.issuer_fiscal_name ?? '',
+                fiscalId: proposal.issuer_fiscal_id ?? '',
+                fiscalAddress: proposal.issuer_fiscal_address ?? '',
+                fiscalCity: proposal.issuer_fiscal_city ?? '',
+              }
             : null
         }
         cliente={
           (proposal.client_fiscal_name || proposal.client_fiscal_id || proposal.client_fiscal_address)
-            ? { fiscalName: proposal.client_fiscal_name ?? '', fiscalId: proposal.client_fiscal_id ?? '', fiscalAddress: proposal.client_fiscal_address ?? '' }
+            ? {
+                fiscalName: proposal.client_fiscal_name ?? '',
+                fiscalId: proposal.client_fiscal_id ?? '',
+                fiscalAddress: proposal.client_fiscal_address ?? '',
+              }
             : null
         }
         proposalTitle={proposal.title ?? ''}
