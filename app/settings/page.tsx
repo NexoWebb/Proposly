@@ -58,6 +58,12 @@ export default function SettingsPage() {
   const [dark,        setDark]        = useState(false)
   const [menuOpen,    setMenuOpen]    = useState(false)
 
+  // Marca
+  const [brandColor,    setBrandColor]    = useState<string | null>(null)
+  const [savingBrand,   setSavingBrand]   = useState(false)
+  const [brandMsg,      setBrandMsg]      = useState('')
+  const [brandDragging, setBrandDragging] = useState(false)
+
   // Suscripción
   type SubscriptionRow = {
     plan: 'free' | 'pro'
@@ -116,6 +122,7 @@ export default function SettingsPage() {
         setDefaultVatRate(data.default_vat_rate ?? '21')
         setDefaultIrpfEnabled(data.default_irpf_enabled ?? false)
         setDefaultIrpfRate(data.default_irpf_rate ?? '15')
+        setBrandColor(data.brand_color ?? null)
       }
       const { data: tpls } = await supabase.from('templates').select('id, name').eq('user_id', user.id).order('created_at', { ascending: false })
       setTemplates(tpls ?? [])
@@ -148,18 +155,49 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     if (!userId) return
     setSavingProfile(true); setProfileMsg('')
+    const { error } = await supabase.from('profiles').upsert({ user_id: userId, name }, { onConflict: 'user_id' })
+    setProfileMsg(error ? 'Error: ' + error.message : '✓ Perfil actualizado')
+    setSavingProfile(false)
+  }
+
+  const handleSaveBrand = async () => {
+    if (!userId) return
+    if (brandColor !== null && !/^#[0-9A-Fa-f]{6}$/.test(brandColor)) {
+      setBrandMsg('El color debe tener formato #RRGGBB')
+      return
+    }
+    setSavingBrand(true); setBrandMsg('')
     let finalLogoUrl = logoUrl
     if (logoFile) {
       const ext = logoFile.name.split('.').pop()
       const path = `${userId}/logo.${ext}`
       const { error: uploadError } = await supabase.storage.from('logos').upload(path, logoFile, { upsert: true })
-      if (uploadError) { setProfileMsg('Error al subir el logo: ' + uploadError.message); setSavingProfile(false); return }
+      if (uploadError) { setBrandMsg('Error al subir el logo: ' + uploadError.message); setSavingBrand(false); return }
       const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path)
-      finalLogoUrl = urlData.publicUrl; setLogoUrl(finalLogoUrl)
+      finalLogoUrl = urlData.publicUrl; setLogoUrl(finalLogoUrl); setLogoFile(null)
     }
-    const { error } = await supabase.from('profiles').upsert({ user_id: userId, name, logo_url: finalLogoUrl }, { onConflict: 'user_id' })
-    setProfileMsg(error ? 'Error: ' + error.message : '✓ Perfil actualizado')
-    setSavingProfile(false)
+    const { error } = await supabase.from('profiles').upsert({
+      user_id: userId,
+      logo_url: finalLogoUrl,
+      brand_color: brandColor || null,
+    }, { onConflict: 'user_id' })
+    setBrandMsg(error ? 'Error: ' + error.message : '✓ Marca guardada')
+    setSavingBrand(false)
+  }
+
+  const handleLogoDelete = () => {
+    setLogoFile(null)
+    setLogoPreview(null)
+    setLogoUrl(null)
+  }
+
+  const handleLogoDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setBrandDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
   }
 
   const validateFiscalId = (val: string) => {
@@ -268,6 +306,8 @@ export default function SettingsPage() {
 
   const currentLogo = logoPreview ?? logoUrl
 
+  const isProPlan = subscription?.plan === 'pro'
+
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: mid, fontSize: '13px', fontFamily: 'inherit' }}>
       Cargando...
@@ -334,33 +374,101 @@ export default function SettingsPage() {
               <input style={inp} type="text" placeholder="Tu nombre o el de tu agencia" value={name} onChange={e => setName(e.target.value)} />
             </div>
 
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '8px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Logo</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  style={{ width: '72px', height: '72px', borderRadius: '12px', border: `1px dashed ${border}`, background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', flexShrink: 0 }}>
-                  {currentLogo
-                    ? <img src={currentLogo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    : <span style={{ fontSize: '22px' }}>🖼️</span>
-                  }
-                </div>
-                <div>
-                  <button onClick={() => fileRef.current?.click()}
-                    style={{ background: primaryLight, border: `0.5px solid #C4CEFC`, borderRadius: '8px', padding: '7px 14px', fontSize: '12px', color: primary, cursor: 'pointer', display: 'block', marginBottom: '5px', fontFamily: 'inherit', fontWeight: '500' }}>
-                    {currentLogo ? 'Cambiar logo' : 'Subir logo'}
-                  </button>
-                  <span style={{ fontSize: '11px', color: mid }}>PNG, JPG o SVG · Aparece en las propuestas</span>
-                </div>
-              </div>
-              <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} style={{ display: 'none' }} />
-            </div>
-
             <Msg text={profileMsg} />
 
             <button onClick={handleSaveProfile} disabled={savingProfile}
               style={{ background: savingProfile ? 'var(--bg-surface)' : primary, color: savingProfile ? mid : '#fff', border: 'none', borderRadius: '8px', padding: isMobile ? '12px 20px' : '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingProfile ? 'default' : 'pointer', fontFamily: 'inherit', minHeight: isMobile ? '44px' : 'auto' }}>
               {savingProfile ? 'Guardando...' : 'Guardar perfil'}
+            </button>
+          </div>
+        </Section>
+
+        {/* Marca */}
+        <Section>
+          <SectionHeader label="Marca" />
+          <div style={{ padding: '18px' }}>
+            <p style={{ fontSize: '12px', color: mid, margin: '0 0 16px', lineHeight: '1.5' }}>
+              Personaliza cómo se ven tus propuestas para los clientes.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '8px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Logo</label>
+              {currentLogo ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <img src={currentLogo} alt="Logo" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '8px', border: `0.5px solid ${border}`, background: 'var(--bg-surface)', padding: '4px' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <button onClick={() => fileRef.current?.click()}
+                      style={{ background: primaryLight, border: `0.5px solid #C4CEFC`, borderRadius: '8px', padding: '7px 14px', fontSize: '12px', color: primary, cursor: 'pointer', fontFamily: 'inherit', fontWeight: '500' }}>
+                      Cambiar
+                    </button>
+                    <button onClick={handleLogoDelete}
+                      style={{ background: 'none', border: '0.5px solid rgba(162,45,45,0.3)', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', color: '#A32D2D', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onDragOver={e => { e.preventDefault(); setBrandDragging(true) }}
+                  onDragLeave={() => setBrandDragging(false)}
+                  onDrop={handleLogoDrop}
+                  onClick={() => fileRef.current?.click()}
+                  style={{ border: `1.5px dashed ${brandDragging ? primary : border}`, borderRadius: '12px', padding: '28px 20px', textAlign: 'center', cursor: 'pointer', background: brandDragging ? primaryLight : 'var(--bg-surface)', transition: 'all 0.15s' }}>
+                  <p style={{ fontSize: '13px', color: mid, margin: '0 0 10px' }}>Arrastra tu logo aquí</p>
+                  <button type="button"
+                    style={{ background: primaryLight, border: `0.5px solid #C4CEFC`, borderRadius: '8px', padding: '7px 14px', fontSize: '12px', color: primary, cursor: 'pointer', fontFamily: 'inherit', fontWeight: '500' }}>
+                    Subir logo
+                  </button>
+                  <p style={{ fontSize: '11px', color: mid, margin: '8px 0 0', opacity: 0.7 }}>PNG, JPG, WebP, SVG · Máx 2 MB</p>
+                </div>
+              )}
+              <input ref={fileRef} type="file" accept=".png,.jpg,.jpeg,.webp,.svg" onChange={handleLogoChange} style={{ display: 'none' }} />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '11px', color: mid, display: 'block', marginBottom: '8px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Color de marca</label>
+              {isProPlan ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <input
+                    type="color"
+                    value={brandColor ?? '#4F6EF7'}
+                    onChange={e => setBrandColor(e.target.value)}
+                    style={{ width: '40px', height: '36px', padding: '2px', border: `0.5px solid ${border}`, borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-surface)' }}
+                  />
+                  <input
+                    style={{ ...inp, maxWidth: '110px' }}
+                    type="text"
+                    placeholder="#4F6EF7"
+                    value={brandColor ?? ''}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setBrandColor(v)
+                    }}
+                  />
+                  {brandColor && (
+                    <button onClick={() => setBrandColor(null)}
+                      style={{ background: 'none', border: `0.5px solid ${border}`, borderRadius: '8px', padding: '7px 12px', fontSize: '12px', color: mid, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Restablecer
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ width: '40px', height: '36px', borderRadius: '8px', background: '#E0E0E0', border: `0.5px solid ${border}`, flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', color: mid, background: 'var(--bg-surface)', border: `0.5px solid ${border}`, borderRadius: '20px', padding: '3px 10px' }}>Disponible en plan Pro</span>
+                  <button onClick={handleUpgrade} disabled={upgradeLoading}
+                    style={{ background: 'none', border: 'none', color: primary, fontSize: '12px', cursor: upgradeLoading ? 'default' : 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}>
+                    {upgradeLoading ? 'Cargando...' : 'Mejora a Pro'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <Msg text={brandMsg} />
+
+            <button onClick={handleSaveBrand} disabled={savingBrand}
+              style={{ background: savingBrand ? 'var(--bg-surface)' : primary, color: savingBrand ? mid : '#fff', border: 'none', borderRadius: '8px', padding: isMobile ? '12px 20px' : '9px 18px', fontSize: '13px', fontWeight: '500', cursor: savingBrand ? 'default' : 'pointer', fontFamily: 'inherit', minHeight: isMobile ? '44px' : 'auto' }}>
+              {savingBrand ? 'Guardando...' : 'Guardar marca'}
             </button>
           </div>
         </Section>
